@@ -1,0 +1,70 @@
+@import "tailwindcss";
+
+/* ── Brand design tokens ─────────────────────────────────────────────────── */
+:root {
+  /* Primary palette — extracted from legacy site CSS */
+  --brand:          #1CA0DF;   /* primary blue — buttons, accents */
+  --brand-dark:     #105778;   /* dark navy — header, sidebar */
+  --brand-hover:    #1786BB;   /* button hover */
+  --brand-light:    #EDF0FA;   /* light blue tint — section bg */
+
+  --error:          #E0232C;   /* red — errors, destructive */
+  --error-hover:    #94181E;
+
+  --text-heading:   #262D45;   /* dark heading text */
+  --text-body:      #505458;   /* standard body text */
+  --text-muted:     #797979;   /* secondary / muted text */
+
+  --border:         #E3E3E3;   /* input / card borders */
+  --bg-page:        #EBEFF2;   /* page background — light blue-gray */
+  --bg-card:        #FFFFFF;
+  --bg-hover:       #F5F5F5;
+
+  --shadow-card:    0px 5px 10px rgba(55, 106, 136, 0.10);
+  --shadow-modal:   0px 4px 54px rgba(0, 0, 0, 0.16);
+
+  /* Typography */
+  --sans:    'Nunito Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  --mono:    ui-monospace, Consolas, monospace;
+}
+
+/* ── Tailwind custom theme tokens (v4 @theme) ───────────────────────────── */
+@theme {
+  --font-sans: 'Nunito Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+
+  /* Custom color utilities: bg-brand, text-brand, border-brand, etc. */
+  --color-brand:       #1CA0DF;
+  --color-brand-dark:  #105778;
+  --color-brand-hover: #1786BB;
+  --color-brand-light: #EDF0FA;
+  --color-page:        #EBEFF2;
+  --color-ode-error:   #E0232C;
+}
+
+/* ── Base resets ─────────────────────────────────────────────────────────── */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+html {
+  font-family: var(--sans);
+  font-size: 16px;
+  line-height: 1.6;
+  color: var(--text-body);
+  background-color: var(--bg-page);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+}
+
+/* #root fills the full viewport — no width constraint */
+#root {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
