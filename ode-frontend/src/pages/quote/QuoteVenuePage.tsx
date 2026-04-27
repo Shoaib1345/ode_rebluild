@@ -102,7 +102,7 @@ export default function QuoteVenuePage() {
       venue_contact_number: contactNumber,
       venue_contact_email:  contactEmail,
     })
-    navigate('/quote/info')
+    navigate('/quote/payment')
   }
 
   if (!selectedPlan) return null
