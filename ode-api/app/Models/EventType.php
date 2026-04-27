@@ -2,13 +2,15 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class EventType extends Model
 {
-    // Legacy table uses 'uid' as primary key instead of 'id'
-    protected $primaryKey = 'uid';
+    use HasFactory;
+    // Standard 'id' primary key — the old crm used 'uid' but this rebuild uses id()
+    // Do NOT add $primaryKey = 'uid' — the migration creates a standard id column.
 
     protected $fillable = [
         'event_type',

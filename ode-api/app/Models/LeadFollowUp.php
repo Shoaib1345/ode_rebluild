@@ -14,12 +14,14 @@ class LeadFollowUp extends Model
         'follow_up_date',
         'notes',
         'status',
+        'reminder_sent_at',
     ];
 
     protected function casts(): array
     {
         return [
-            'follow_up_date' => 'date',
+            'follow_up_date'   => 'date',
+            'reminder_sent_at' => 'datetime',
         ];
     }
 
