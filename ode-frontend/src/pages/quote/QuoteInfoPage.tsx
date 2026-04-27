@@ -4,48 +4,22 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import SignatureCanvas from 'react-signature-canvas'
-import { useQuery } from '@tanstack/react-query'
-import api from '../../lib/axios'
 import { useQuoteStore } from '../../stores/quoteStore'
-import type { UsState } from '../../types'
 import QuoteLayout from './QuoteLayout'
 
 // ─── Schema ───────────────────────────────────────────────────────────────────
 
 const schema = z.object({
-  first_name:  z.string().min(1, 'Required'),
-  last_name:   z.string().min(1, 'Required'),
-  email:       z.string().min(1, 'Required').email('Enter a valid email'),
-  phone:       z.string().min(7, 'Enter a valid phone number'),
-
-  ins_first_name: z.string().min(1, 'Required'),
-  ins_last_name:  z.string().min(1, 'Required'),
-  ins_street:     z.string().min(1, 'Required'),
-  ins_city:       z.string().min(1, 'Required'),
-  ins_state:      z.string().min(1, 'Select a state'),
-  ins_zip:        z.string().regex(/^\d{5}$/, 'Enter a 5-digit zip'),
-
-  event_name:           z.string().min(1, 'Required'),
-  venue_name:           z.string().min(1, 'Required'),
-  venue_address:        z.string().min(1, 'Required'),
-  venue_city:           z.string().min(1, 'Required'),
-  venue_state:          z.string().min(1, 'Select a state'),
-  venue_zip:            z.string().regex(/^\d{5}$/, 'Enter a 5-digit zip'),
-  venue_contact_person: z.string().optional(),
-  venue_contact_email:  z.string().email('Enter a valid email').or(z.literal('')).optional(),
-  venue_contact_number: z.string().optional(),
-
+  first_name: z.string().min(1, 'Required'),
+  last_name:  z.string().min(1, 'Required'),
+  email:      z.string().min(1, 'Required').email('Enter a valid email'),
+  phone:      z.string().min(7, 'Enter a valid phone number'),
   acknowledge: z.literal(true, { error: 'You must accept the terms' }),
 })
 
 type FormData = z.infer<typeof schema>
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
-
-async function fetchStates(): Promise<UsState[]> {
-  const res = await api.get<UsState[]>('/us-states')
-  return res.data
-}
 
 function FieldError({ msg }: { msg?: string }) {
   if (!msg) return null
@@ -128,36 +102,33 @@ export default function QuoteInfoPage() {
   const pendingQuoteId    = useQuoteStore((s) => s.pendingQuoteId)
   const setPendingQuoteId = useQuoteStore((s) => s.setPendingQuoteId)
   const setCustomerInfo   = useQuoteStore((s) => s.setCustomerInfo)
+  const customerInfo      = useQuoteStore((s) => s.customerInfo)
   const sigRef            = useRef<SignatureCanvas>(null)
 
   useEffect(() => {
     if (!selectedPlan) navigate('/quote/plans', { replace: true })
   }, [selectedPlan, navigate])
 
-  const { data: states = [] } = useQuery({
-    queryKey: ['us-states'],
-    queryFn:  fetchStates,
-    staleTime: 10 * 60 * 1000,
-  })
-
   const {
     register,
     handleSubmit,
-    setValue,
     getValues,
     formState: { errors, isSubmitting },
   } = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: {
-      ins_state:   params.event_state ?? '',
-      venue_state: params.event_state ?? '',
+      first_name: String(customerInfo.first_name ?? ''),
+      last_name:  String(customerInfo.last_name  ?? ''),
+      email:      String(customerInfo.email       ?? ''),
+      phone:      String(customerInfo.phone       ?? ''),
     },
   })
 
   const autoSave = useCallback(async (email: string) => {
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return
     try {
-      const currentState = { params, plans, selectedPlan, customerInfo: getValues() }
+      const { default: api } = await import('../../lib/axios')
+      const currentState = { params, plans, selectedPlan, customerInfo: { ...customerInfo, ...getValues() } }
       const payload: Record<string, unknown> = {
         email,
         current_route: '/quote/info',
@@ -172,15 +143,7 @@ export default function QuoteInfoPage() {
     } catch {
       // best-effort
     }
-  }, [params, plans, selectedPlan, pendingQuoteId, setPendingQuoteId, getValues])
-
-  const fillInsuredFromContact = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!e.target.checked) return
-    const el = (name: string) =>
-      (document.getElementsByName(name)[0] as HTMLInputElement)?.value ?? ''
-    setValue('ins_first_name', el('first_name'))
-    setValue('ins_last_name',  el('last_name'))
-  }
+  }, [params, plans, selectedPlan, customerInfo, pendingQuoteId, setPendingQuoteId, getValues])
 
   const onSubmit = (data: FormData) => {
     const sigData = sigRef.current && !sigRef.current.isEmpty()
@@ -201,13 +164,13 @@ export default function QuoteInfoPage() {
       <div className="mb-5 flex items-center justify-between flex-wrap gap-3">
         <button
           type="button"
-          onClick={() => navigate('/quote/plans')}
+          onClick={() => navigate('/quote/venue')}
           className="inline-flex items-center gap-1 text-sm text-[#1CA0DF] hover:text-[#105778] font-medium transition"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
           </svg>
-          Back to Plans
+          Back to Venue
         </button>
 
         {selectedPlan && (
@@ -250,108 +213,9 @@ export default function QuoteInfoPage() {
           </div>
         </SectionCard>
 
-        {/* ── 2. Named Insured ────────────────────────────────────────── */}
+        {/* ── 2. Signature ────────────────────────────────────────────── */}
         <SectionCard
           num={2}
-          title="Named insured"
-          subtitle="The person or organization on the policy — usually the event host."
-        >
-          <label className="flex items-center gap-2.5 text-sm text-[#505458] mb-5 cursor-pointer p-3 bg-[#EDF0FA]/60 rounded-xl border border-[#E3E3E3]">
-            <input
-              type="checkbox"
-              onChange={fillInsuredFromContact}
-              className="h-4 w-4 rounded border-gray-300 text-[#1CA0DF]"
-            />
-            Same as contact information above
-          </label>
-
-          <div className="grid grid-cols-2 gap-4 mb-4">
-            <Field label="First name" required error={errors.ins_first_name?.message}>
-              <input {...register('ins_first_name')} className={inputCls(errors.ins_first_name?.message)} placeholder="Jane" />
-            </Field>
-            <Field label="Last name" required error={errors.ins_last_name?.message}>
-              <input {...register('ins_last_name')} className={inputCls(errors.ins_last_name?.message)} placeholder="Smith" />
-            </Field>
-          </div>
-          <div className="mb-4">
-            <Field label="Street address" required error={errors.ins_street?.message}>
-              <input {...register('ins_street')} className={inputCls(errors.ins_street?.message)} placeholder="123 Main St" />
-            </Field>
-          </div>
-          <div className="grid grid-cols-3 gap-4">
-            <Field label="City" required error={errors.ins_city?.message}>
-              <input {...register('ins_city')} className={inputCls(errors.ins_city?.message)} placeholder="Los Angeles" />
-            </Field>
-            <Field label="State" required error={errors.ins_state?.message}>
-              <select {...register('ins_state')} className={inputCls(errors.ins_state?.message)}>
-                <option value="">State…</option>
-                {states.map((s) => (
-                  <option key={s.id} value={s.abbreviation}>{s.abbreviation}</option>
-                ))}
-              </select>
-            </Field>
-            <Field label="ZIP" required error={errors.ins_zip?.message}>
-              <input {...register('ins_zip')} className={inputCls(errors.ins_zip?.message)} placeholder="90210" maxLength={5} />
-            </Field>
-          </div>
-        </SectionCard>
-
-        {/* ── 3. Event & Venue ────────────────────────────────────────── */}
-        <SectionCard num={3} title="Event & venue details">
-          <div className="grid grid-cols-2 gap-4 mb-4">
-            <Field label="Event name" required error={errors.event_name?.message}>
-              <input {...register('event_name')} className={inputCls(errors.event_name?.message)} placeholder="Jane's Birthday Party" />
-            </Field>
-            <Field label="Venue name" required error={errors.venue_name?.message}>
-              <input {...register('venue_name')} className={inputCls(errors.venue_name?.message)} placeholder="The Grand Ballroom" />
-            </Field>
-          </div>
-
-          <div className="mb-4">
-            <Field label="Venue street address" required error={errors.venue_address?.message}>
-              <input {...register('venue_address')} className={inputCls(errors.venue_address?.message)} placeholder="456 Venue Ave" />
-            </Field>
-          </div>
-
-          <div className="grid grid-cols-3 gap-4 mb-5">
-            <Field label="City" required error={errors.venue_city?.message}>
-              <input {...register('venue_city')} className={inputCls(errors.venue_city?.message)} placeholder="Los Angeles" />
-            </Field>
-            <Field label="State" required error={errors.venue_state?.message}>
-              <select {...register('venue_state')} className={inputCls(errors.venue_state?.message)}>
-                <option value="">State…</option>
-                {states.map((s) => (
-                  <option key={s.id} value={s.abbreviation}>{s.abbreviation}</option>
-                ))}
-              </select>
-            </Field>
-            <Field label="ZIP" required error={errors.venue_zip?.message}>
-              <input {...register('venue_zip')} className={inputCls(errors.venue_zip?.message)} placeholder="90210" maxLength={5} />
-            </Field>
-          </div>
-
-          <div className="pt-4 border-t border-[#E3E3E3]">
-            <p className="text-xs font-semibold text-[#262D45] mb-3">
-              Venue contact{' '}
-              <span className="text-[#797979] font-normal">(optional — if provided, we'll send the COI directly to them)</span>
-            </p>
-            <div className="grid grid-cols-3 gap-4">
-              <Field label="Contact name" error={errors.venue_contact_person?.message}>
-                <input {...register('venue_contact_person')} className={inputCls()} placeholder="Optional" />
-              </Field>
-              <Field label="Contact phone" error={errors.venue_contact_number?.message}>
-                <input {...register('venue_contact_number')} type="tel" className={inputCls()} placeholder="Optional" />
-              </Field>
-              <Field label="Contact email" error={errors.venue_contact_email?.message}>
-                <input {...register('venue_contact_email')} type="email" className={inputCls(errors.venue_contact_email?.message)} placeholder="Optional" />
-              </Field>
-            </div>
-          </div>
-        </SectionCard>
-
-        {/* ── 4. Signature ────────────────────────────────────────────── */}
-        <SectionCard
-          num={4}
           title="Signature"
           subtitle="By signing you confirm the information is accurate and agree to the policy terms."
         >
@@ -374,7 +238,7 @@ export default function QuoteInfoPage() {
           </button>
         </SectionCard>
 
-        {/* ── 5. Acknowledgement ──────────────────────────────────────── */}
+        {/* ── 3. Acknowledgement ──────────────────────────────────────── */}
         <div className="bg-white rounded-2xl shadow-[0px_4px_12px_rgba(55,106,136,0.08)] px-6 py-5">
           <label className="flex items-start gap-3 cursor-pointer">
             <input
