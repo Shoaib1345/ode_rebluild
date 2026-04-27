@@ -1,6 +1,7 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useMemo } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import toast from 'react-hot-toast'
 import api from '../../lib/axios'
 import AdminLayout from './AdminLayout'
 
@@ -65,6 +66,32 @@ interface LeadDetail {
   user_timezone: string | null
   created_at: string
   notes: Note[]
+  policy_pdf_path: string | null
+  receipt_pdf_path: string | null
+  coi_pdf_path: string | null
+}
+
+interface DocuSignStatus {
+  envelope_id: string | null
+  status: 'sent' | 'delivered' | 'completed' | 'declined' | 'voided' | null
+  sent_at: string | null
+  signed_at: string | null
+}
+
+interface Assignee {
+  id: number
+  first_name: string
+  last_name: string
+  email: string
+  role_name: string | null
+}
+
+interface AssignableUser {
+  id: number
+  first_name: string
+  last_name: string
+  email: string
+  role_name: string | null
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -208,6 +235,97 @@ export default function LeadDetailPage() {
         old ? { ...old, notes: [note, ...old.notes] } : old
       )
       setNoteText('')
+    },
+  })
+
+  // ── DocuSign status query ────────────────────────────────────────────────
+  const { data: docuSign, refetch: refetchDocuSign } = useQuery<DocuSignStatus>({
+    queryKey: ['admin-lead-docusign', id],
+    queryFn:  () => api.get(`/admin/leads/${id}/docusign/status`).then(r => r.data),
+    enabled:  !!id,
+    refetchInterval: (q) => {
+      const status = q.state.data?.status
+      // Poll every 30s while pending (sent/delivered)
+      return (status === 'sent' || status === 'delivered') ? 30_000 : false
+    },
+  })
+
+  // ── PDF status ───────────────────────────────────────────────────────────
+  interface PdfStatus { policy_pdf_path: string | null; receipt_pdf_path: string | null; coi_pdf_path: string | null }
+  const { data: pdfStatus, refetch: refetchPdf } = useQuery<PdfStatus>({
+    queryKey: ['admin-lead-pdfs', id],
+    queryFn:  () => api.get(`/admin/leads/${id}/pdf-status`).then(r => r.data),
+    enabled:  !!id,
+  })
+
+  const generatePdf = useMutation({
+    mutationFn: (type: 'policy' | 'coi') =>
+      api.post(`/admin/leads/${id}/generate-pdf${type === 'coi' ? '/coi' : ''}`),
+    onSuccess: (_d, type) => {
+      toast.success(type === 'coi' ? 'COI queued.' : 'Policy & receipt queued.')
+      // Poll after a moment since QUEUE_CONNECTION=sync locally it's instant
+      setTimeout(() => void refetchPdf(), 500)
+    },
+    onError: () => toast.error('PDF generation failed.'),
+  })
+
+  // ── Assignment ───────────────────────────────────────────────────────────
+  const [selectedUserId, setSelectedUserId] = useState<number | ''>('')
+
+  const { data: assignments, refetch: refetchAssignments } = useQuery<{ assignees: Assignee[] }>({
+    queryKey: ['admin-lead-assignments', id],
+    queryFn:  () => api.get(`/admin/leads/${id}/assignments`).then(r => r.data),
+    enabled:  !!id,
+  })
+
+  const { data: assignableUsers = [] } = useQuery<AssignableUser[]>({
+    queryKey: ['admin-assignable-users'],
+    queryFn:  () => api.get('/admin/assignable-users').then(r => r.data),
+    staleTime: 5 * 60 * 1000,
+  })
+
+  const assignUser = useMutation({
+    mutationFn: (userId: number) =>
+      api.post(`/admin/leads/${id}/assignments`, { user_id: userId }).then(r => r.data),
+    onSuccess: () => {
+      toast.success('Agent assigned.')
+      setSelectedUserId('')
+      void refetchAssignments()
+    },
+    onError: (err: { response?: { data?: { message?: string } } }) => {
+      toast.error(err.response?.data?.message ?? 'Failed to assign.')
+    },
+  })
+
+  const unassignUser = useMutation({
+    mutationFn: (userId: number) =>
+      api.delete(`/admin/leads/${id}/assignments/${userId}`).then(r => r.data),
+    onSuccess: () => {
+      toast.success('Agent removed.')
+      void refetchAssignments()
+    },
+    onError: () => toast.error('Failed to remove assignment.'),
+  })
+
+  // Users not yet assigned — filter the dropdown
+  const assignedIds = useMemo(
+    () => new Set((assignments?.assignees ?? []).map(a => a.id)),
+    [assignments]
+  )
+  const unassignedUsers = useMemo(
+    () => assignableUsers.filter(u => !assignedIds.has(u.id)),
+    [assignableUsers, assignedIds]
+  )
+
+  // ── DocuSign send / resend ───────────────────────────────────────────────
+  const sendEnvelope = useMutation({
+    mutationFn: () => api.post(`/admin/leads/${id}/docusign/send`),
+    onSuccess: () => {
+      toast.success('Envelope sent for signature.')
+      void refetchDocuSign()
+    },
+    onError: (err: { response?: { data?: { message?: string } } }) => {
+      toast.error(err.response?.data?.message ?? 'Failed to send envelope.')
     },
   })
 
@@ -458,6 +576,215 @@ export default function LeadDetailPage() {
               <Row label="Created"  value={fmtDateTime(lead.created_at)} />
               <Row label="Carrier"  value={val(lead.carrier)} />
               <Row label="Coverage" value={val(lead.coverage_limit)} />
+            </Section>
+
+            {/* ── PDFs ─────────────────────────────────────────────── */}
+            <Section title="Documents">
+              <div className="space-y-2">
+                {/* Policy PDF */}
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-gray-600">Policy PDF</span>
+                  {pdfStatus?.policy_pdf_path ? (
+                    <a
+                      href={`/api/files/policies/${lead.id}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-xs text-blue-600 hover:underline"
+                    >
+                      ↓ Download
+                    </a>
+                  ) : (
+                    <span className="text-xs text-gray-400">Not generated</span>
+                  )}
+                </div>
+
+                {/* Receipt PDF */}
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-gray-600">Receipt PDF</span>
+                  {pdfStatus?.receipt_pdf_path ? (
+                    <a
+                      href={`/api/files/receipts/${lead.id}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-xs text-blue-600 hover:underline"
+                    >
+                      ↓ Download
+                    </a>
+                  ) : (
+                    <span className="text-xs text-gray-400">Not generated</span>
+                  )}
+                </div>
+
+                {/* COI PDF */}
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-gray-600">Certificate of Insurance</span>
+                  {pdfStatus?.coi_pdf_path ? (
+                    <a
+                      href={`/api/files/cois/${lead.id}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-xs text-blue-600 hover:underline"
+                    >
+                      ↓ Download
+                    </a>
+                  ) : (
+                    <span className="text-xs text-gray-400">Not generated</span>
+                  )}
+                </div>
+              </div>
+
+              {/* Generate buttons */}
+              <div className="flex gap-2 mt-4 pt-3 border-t border-gray-100">
+                <button
+                  onClick={() => generatePdf.mutate('policy')}
+                  disabled={generatePdf.isPending}
+                  className="flex-1 text-xs bg-[#105778] text-white px-3 py-1.5 rounded-lg hover:bg-[#0b3f57] transition disabled:opacity-50"
+                >
+                  {generatePdf.isPending ? '…' : 'Generate Policy'}
+                </button>
+                <button
+                  onClick={() => generatePdf.mutate('coi')}
+                  disabled={generatePdf.isPending}
+                  className="flex-1 text-xs border border-[#105778] text-[#105778] px-3 py-1.5 rounded-lg hover:bg-[#105778]/5 transition disabled:opacity-50"
+                >
+                  Gen. COI
+                </button>
+              </div>
+            </Section>
+
+            {/* ── Assignment ───────────────────────────────────────── */}
+            <Section title="Assigned agents">
+              {/* Current assignees */}
+              {(assignments?.assignees ?? []).length === 0 ? (
+                <p className="text-xs text-gray-400 mb-3">No one assigned yet.</p>
+              ) : (
+                <ul className="space-y-2 mb-3">
+                  {(assignments?.assignees ?? []).map((a) => (
+                    <li
+                      key={a.id}
+                      className="flex items-center justify-between rounded-lg bg-gray-50 border border-gray-100 px-3 py-2"
+                    >
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-gray-800 truncate">
+                          {a.first_name} {a.last_name}
+                        </p>
+                        <p className="text-xs text-gray-400 truncate">{a.role_name}</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => unassignUser.mutate(a.id)}
+                        disabled={unassignUser.isPending}
+                        title="Remove assignment"
+                        className="ml-2 shrink-0 text-gray-300 hover:text-red-500 transition-colors disabled:opacity-40 text-lg leading-none"
+                      >
+                        ×
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+
+              {/* Add assignment */}
+              {unassignedUsers.length > 0 && (
+                <div className="flex gap-2">
+                  <select
+                    value={selectedUserId}
+                    onChange={(e) => setSelectedUserId(e.target.value ? Number(e.target.value) : '')}
+                    className="flex-1 min-w-0 text-sm border border-gray-300 rounded-lg px-2 py-1.5
+                      focus:outline-none focus:ring-2 focus:ring-[#1CA0DF] bg-white"
+                  >
+                    <option value="">Pick a person…</option>
+                    {unassignedUsers.map((u) => (
+                      <option key={u.id} value={u.id}>
+                        {u.first_name} {u.last_name} ({u.role_name})
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (selectedUserId !== '') assignUser.mutate(selectedUserId as number)
+                    }}
+                    disabled={selectedUserId === '' || assignUser.isPending}
+                    className="shrink-0 px-3 py-1.5 text-sm bg-[#1CA0DF] hover:bg-[#1786BB] text-white
+                      rounded-lg transition-colors disabled:opacity-40"
+                  >
+                    {assignUser.isPending ? '…' : 'Assign'}
+                  </button>
+                </div>
+              )}
+
+              {unassignedUsers.length === 0 && (assignments?.assignees ?? []).length > 0 && (
+                <p className="text-xs text-gray-400 mt-1">All available agents assigned.</p>
+              )}
+            </Section>
+
+            {/* ── DocuSign ─────────────────────────────────────────── */}
+            <Section title="E-Signature (DocuSign)">
+              {!docuSign || docuSign.status === null ? (
+                /* No envelope yet */
+                <div className="text-center py-2">
+                  <p className="text-xs text-gray-400 mb-3">No signature request sent yet.</p>
+                  <button
+                    onClick={() => sendEnvelope.mutate()}
+                    disabled={sendEnvelope.isPending}
+                    className="w-full bg-[#105778] text-white text-sm font-medium px-4 py-2 rounded-lg hover:bg-[#0b3f57] transition disabled:opacity-50"
+                  >
+                    {sendEnvelope.isPending ? 'Sending…' : 'Send for Signature'}
+                  </button>
+                </div>
+              ) : docuSign.status === 'completed' ? (
+                /* Signed */
+                <div>
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                      ✓ Signed
+                    </span>
+                  </div>
+                  {docuSign.signed_at && (
+                    <p className="text-xs text-gray-400">
+                      Signed {fmtDateTime(docuSign.signed_at)}
+                    </p>
+                  )}
+                </div>
+              ) : docuSign.status === 'declined' || docuSign.status === 'voided' ? (
+                /* Declined / voided — allow re-send */
+                <div>
+                  <div className="flex items-center gap-2 mb-3">
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700 capitalize">
+                      {docuSign.status}
+                    </span>
+                  </div>
+                  <button
+                    onClick={() => sendEnvelope.mutate()}
+                    disabled={sendEnvelope.isPending}
+                    className="w-full border border-[#105778] text-[#105778] text-sm font-medium px-4 py-2 rounded-lg hover:bg-[#105778]/5 transition disabled:opacity-50"
+                  >
+                    {sendEnvelope.isPending ? 'Sending…' : 'Send New Envelope'}
+                  </button>
+                </div>
+              ) : (
+                /* Sent / delivered — pending signature */
+                <div>
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700 capitalize">
+                      {docuSign.status === 'delivered' ? 'Viewed' : 'Awaiting Signature'}
+                    </span>
+                  </div>
+                  {docuSign.sent_at && (
+                    <p className="text-xs text-gray-400 mb-3">
+                      Sent {fmtDateTime(docuSign.sent_at)}
+                    </p>
+                  )}
+                  <button
+                    onClick={() => sendEnvelope.mutate()}
+                    disabled={sendEnvelope.isPending}
+                    className="w-full text-sm text-[#1CA0DF] border border-[#1CA0DF] px-4 py-1.5 rounded-lg hover:bg-[#1CA0DF]/5 transition disabled:opacity-50"
+                  >
+                    {sendEnvelope.isPending ? 'Resending…' : 'Resend Reminder'}
+                  </button>
+                </div>
+              )}
             </Section>
 
           </div>

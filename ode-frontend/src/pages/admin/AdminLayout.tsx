@@ -50,14 +50,23 @@ function PencilIcon() {
   )
 }
 
+function ArrowUpIcon() {
+  return (
+    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+    </svg>
+  )
+}
+
 const NAV_ITEMS: NavItem[] = [
-  { label: 'Dashboard', to: '/admin',          icon: <ChartBarIcon /> },
-  { label: 'Leads',     to: '/admin/leads',    icon: <UsersIcon /> },
-  { label: 'Invoices',  to: '/admin/invoices', icon: <DocumentIcon /> },
-  { label: 'Blog',      to: '/admin/blog',     icon: <PencilIcon /> },
+  { label: 'Dashboard',    to: '/admin',               icon: <ChartBarIcon /> },
+  { label: 'Leads',        to: '/admin/leads',         icon: <UsersIcon /> },
+  { label: 'Invoices',     to: '/admin/invoices',      icon: <DocumentIcon /> },
+  { label: 'Blog',         to: '/admin/blog',          icon: <PencilIcon /> },
+  { label: 'Rate Import',  to: '/admin/rate-import',   icon: <ArrowUpIcon /> },
 ]
 
-export default function AdminLayout({ children }: { children: React.ReactNode }) {
+export default function AdminLayout({ children, title: _title }: { children: React.ReactNode; title?: string }) {
   const { user, logout } = useAuth()
   const navigate = useNavigate()
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
