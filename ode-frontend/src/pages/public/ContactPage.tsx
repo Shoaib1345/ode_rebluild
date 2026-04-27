@@ -1,125 +1,302 @@
+import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import PublicLayout from '../../components/layout/PublicLayout'
+import api from '../../lib/axios'
 
-const CONTACT_ITEMS = [
+interface FormState {
+  name: string
+  email: string
+  phone: string
+  subject: string
+  message: string
+}
+
+const INITIAL: FormState = { name: '', email: '', phone: '', subject: '', message: '' }
+
+// ── Contact info cards ────────────────────────────────────────────────────────
+
+const CONTACT_CARDS = [
   {
-    label: 'Email',
-    value: 'support@onedayevent.com',
-    href: 'mailto:support@onedayevent.com',
-    icon: (
-      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-          d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-      </svg>
-    ),
+    icon: '/assets/images/contact-icon1.svg',
+    label: 'Phone & Email',
+    lines: ['408-217-6787', 'support@onedayevent.com'],
+    href: 'tel:+14082176787',
   },
   {
-    label: 'Partner / Agent Inquiries',
-    value: 'partners@onedayevent.com',
-    href: 'mailto:partners@onedayevent.com',
-    icon: (
-      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-          d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
-      </svg>
-    ),
+    icon: '/assets/images/contact-icon2.svg',
+    label: 'Office Address',
+    lines: ['1494 Hamilton Ave. #103,', 'San Jose, CA 95125'],
+    href: null,
   },
   {
-    label: 'Affiliate Program',
-    value: 'affiliates@onedayevent.com',
-    href: 'mailto:affiliates@onedayevent.com',
-    icon: (
-      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-          d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
-      </svg>
-    ),
+    icon: '/assets/images/contact-icon3.svg',
+    label: 'Business Hours',
+    lines: ['Weekdays: 5am – 7pm PST', 'Weekends: 6am – 5pm PST'],
+    href: null,
   },
 ]
 
-const FAQS = [
-  {
-    q: 'How quickly will I receive my certificate of insurance?',
-    a: 'Most certificates are issued the same business day. Once your payment is processed, our team reviews and issues your COI — typically within a few hours.',
-  },
-  {
-    q: 'Can I get coverage for an event happening tomorrow?',
-    a: 'In many cases, yes. Coverage availability depends on the event date and carrier requirements. Complete a quote to see real-time availability.',
-  },
-  {
-    q: 'What if I need to cancel my event?',
-    a: 'Cancellation coverage depends on your selected plan. Review the policy details during checkout, or contact us for clarification before purchasing.',
-  },
-  {
-    q: 'Do you cover events outside the United States?',
-    a: 'At this time, we only offer coverage for events held in the United States.',
-  },
-]
+// ── Main page ─────────────────────────────────────────────────────────────────
 
 export default function ContactPage() {
+  const [form, setForm]       = useState<FormState>(INITIAL)
+  const [errors, setErrors]   = useState<Partial<FormState>>({})
+  const [sending, setSending] = useState(false)
+  const [sent, setSent]       = useState(false)
+  const [serverError, setServerError] = useState('')
+
+  function validate(): boolean {
+    const e: Partial<FormState> = {}
+    if (!form.name.trim())    e.name    = 'Your name is required.'
+    if (!form.email.trim())   e.email   = 'Email address is required.'
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email))
+                               e.email   = 'Please enter a valid email.'
+    if (!form.subject.trim()) e.subject = 'Subject is required.'
+    if (!form.message.trim()) e.message = 'Message is required.'
+    setErrors(e)
+    return Object.keys(e).length === 0
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    if (!validate()) return
+    setSending(true)
+    setServerError('')
+    try {
+      await api.post('/contact', form)
+      setSent(true)
+      setForm(INITIAL)
+    } catch {
+      setServerError('Something went wrong. Please try again or email us directly.')
+    } finally {
+      setSending(false)
+    }
+  }
+
+  function field(key: keyof FormState, value: string) {
+    setForm((f) => ({ ...f, [key]: value }))
+    if (errors[key]) setErrors((e) => ({ ...e, [key]: undefined }))
+  }
+
+  const inputBase =
+    'w-full rounded-xl border px-4 py-3 text-sm text-[#262D45] placeholder-gray-400 focus:outline-none focus:ring-2 transition'
+  const inputOk   = `${inputBase} border-[#E3E3E3] bg-white focus:ring-[#1CA0DF]/30 focus:border-[#1CA0DF]`
+  const inputErr  = `${inputBase} border-red-400 bg-red-50 focus:ring-red-200 focus:border-red-400`
+
   return (
     <PublicLayout>
 
-      {/* Hero */}
-      <div className="bg-[#105778] text-white py-16 px-4 text-center">
-        <div className="max-w-2xl mx-auto">
-          <h1 className="text-3xl sm:text-4xl font-bold mb-4">Contact Us</h1>
+      {/* ── Hero ──────────────────────────────────────────────────────────── */}
+      <div
+        className="relative text-white py-20 px-4 text-center overflow-hidden"
+        style={{ background: 'linear-gradient(135deg, #105778 0%, #1CA0DF 100%)' }}
+      >
+        <div className="absolute top-0 right-0 w-64 h-64 rounded-full bg-white/5 -translate-y-1/2 translate-x-1/4" />
+        <div className="absolute bottom-0 left-0 w-48 h-48 rounded-full bg-white/5 translate-y-1/2 -translate-x-1/4" />
+        <div className="relative max-w-2xl mx-auto">
+          <h1 className="text-3xl sm:text-4xl font-extrabold mb-3">Contact Us</h1>
           <p className="text-white/80 text-lg">
-            We're here to help. Reach out by email and we'll get back to you promptly.
+            We're here 7 days a week. Reach out and we'll get back to you promptly.
           </p>
         </div>
       </div>
 
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-16">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+      {/* ── Two-column layout ─────────────────────────────────────────────── */}
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-14">
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-10">
 
-          {/* Contact info */}
-          <div>
-            <h2 className="text-xl font-bold text-gray-800 mb-2">Get in Touch</h2>
-            <p className="text-gray-500 mb-8 leading-relaxed">
-              Our team is available Monday–Friday, 9am–6pm ET. We aim to respond to all inquiries
-              within one business day.
+          {/* ── LEFT: Contact form ──────────────────────────────────────── */}
+          <div className="lg:col-span-3">
+            <h2 className="text-xl font-bold text-[#262D45] mb-1">Send us a message</h2>
+            <p className="text-[#797979] text-sm mb-7">
+              Fill in the form and we'll respond within one business day.
             </p>
 
-            <div className="space-y-5">
-              {CONTACT_ITEMS.map(({ label, value, href, icon }) => (
-                <div key={label} className="flex items-start gap-4 p-4 bg-gray-50 rounded-xl border border-gray-200">
-                  <div className="flex-shrink-0 w-10 h-10 bg-[#EDF0FA] text-[#105778] rounded-lg flex items-center justify-center">
-                    {icon}
+            {sent ? (
+              <div className="flex flex-col items-center justify-center gap-4 py-16 text-center">
+                <div className="w-16 h-16 rounded-full bg-[#EDF0FA] flex items-center justify-center">
+                  <svg className="w-8 h-8 text-[#1CA0DF]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
+                <div>
+                  <p className="text-xl font-bold text-[#262D45]">Message Sent!</p>
+                  <p className="text-[#797979] text-sm mt-1">Thanks for reaching out — we'll be in touch shortly.</p>
+                </div>
+                <button
+                  onClick={() => setSent(false)}
+                  className="mt-2 text-sm text-[#1CA0DF] hover:underline font-medium"
+                >
+                  Send another message
+                </button>
+              </div>
+            ) : (
+              <form onSubmit={handleSubmit} noValidate className="space-y-4">
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-semibold text-[#262D45] mb-1.5">
+                      Your Name <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Jane Smith"
+                      value={form.name}
+                      onChange={(e) => field('name', e.target.value)}
+                      className={errors.name ? inputErr : inputOk}
+                    />
+                    {errors.name && <p className="mt-1 text-xs text-red-500">{errors.name}</p>}
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-[#262D45] mb-1.5">
+                      Email Address <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="email"
+                      placeholder="jane@example.com"
+                      value={form.email}
+                      onChange={(e) => field('email', e.target.value)}
+                      className={errors.email ? inputErr : inputOk}
+                    />
+                    {errors.email && <p className="mt-1 text-xs text-red-500">{errors.email}</p>}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-semibold text-[#262D45] mb-1.5">
+                      Phone Number
+                    </label>
+                    <input
+                      type="tel"
+                      placeholder="(408) 555-0100"
+                      value={form.phone}
+                      onChange={(e) => field('phone', e.target.value)}
+                      className={inputOk}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-[#262D45] mb-1.5">
+                      Subject <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Policy question, claim help…"
+                      value={form.subject}
+                      onChange={(e) => field('subject', e.target.value)}
+                      className={errors.subject ? inputErr : inputOk}
+                    />
+                    {errors.subject && <p className="mt-1 text-xs text-red-500">{errors.subject}</p>}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-[#262D45] mb-1.5">
+                    Message <span className="text-red-500">*</span>
+                  </label>
+                  <textarea
+                    rows={5}
+                    placeholder="Tell us how we can help…"
+                    value={form.message}
+                    onChange={(e) => field('message', e.target.value)}
+                    className={`${errors.message ? inputErr : inputOk} resize-none`}
+                  />
+                  {errors.message && <p className="mt-1 text-xs text-red-500">{errors.message}</p>}
+                </div>
+
+                {serverError && (
+                  <p className="text-sm text-red-500 bg-red-50 border border-red-200 rounded-lg px-4 py-3">
+                    {serverError}
+                  </p>
+                )}
+
+                <button
+                  type="submit"
+                  disabled={sending}
+                  className="w-full py-3.5 rounded-xl bg-[#1CA0DF] hover:bg-[#1786BB] text-white font-bold text-sm transition disabled:opacity-60 disabled:cursor-not-allowed"
+                >
+                  {sending ? 'Sending…' : 'Send Message'}
+                </button>
+
+              </form>
+            )}
+          </div>
+
+          {/* ── RIGHT: Info ─────────────────────────────────────────────── */}
+          <div className="lg:col-span-2 space-y-6">
+
+            {/* Illustration */}
+            <div className="hidden lg:block">
+              <img
+                src="/assets/images/contact-main.svg"
+                alt="Contact One Day Event"
+                className="w-full max-w-xs mx-auto"
+              />
+            </div>
+
+            {/* Info cards */}
+            <div className="space-y-3">
+              {CONTACT_CARDS.map((card) => (
+                <div
+                  key={card.label}
+                  className="flex items-start gap-4 bg-white border border-[#E3E3E3] rounded-xl p-4 shadow-sm"
+                >
+                  <div className="flex-shrink-0 w-10 h-10 rounded-xl bg-[#EDF0FA] flex items-center justify-center">
+                    <img src={card.icon} alt="" className="w-5 h-5" />
                   </div>
                   <div>
-                    <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">{label}</p>
-                    <a href={href} className="text-[#105778] hover:text-[#105778] font-medium transition">
-                      {value}
-                    </a>
+                    <p className="text-xs font-semibold text-[#797979] uppercase tracking-wider mb-1">
+                      {card.label}
+                    </p>
+                    {card.lines.map((line, i) =>
+                      i === 0 && card.href ? (
+                        <a key={i} href={card.href} className="block text-sm font-medium text-[#105778] hover:underline">
+                          {line}
+                        </a>
+                      ) : (
+                        <p key={i} className="text-sm text-[#505458]">{line}</p>
+                      )
+                    )}
                   </div>
                 </div>
               ))}
             </div>
 
-            <div className="mt-8 p-5 bg-[#EDF0FA] border border-[#EDF0FA] rounded-xl">
-              <p className="text-sm text-[#105778] font-medium mb-1">Already have a policy?</p>
-              <p className="text-sm text-[#105778]">
-                Reference your policy number (shown on your confirmation email) when contacting support
-                for the fastest response.
+            {/* Already have a policy tip */}
+            <div className="bg-[#EDF0FA] border border-[#1CA0DF]/20 rounded-xl p-5">
+              <p className="text-sm font-semibold text-[#105778] mb-1">Already have a policy?</p>
+              <p className="text-sm text-[#505458] leading-relaxed">
+                Reference your policy number (shown on your confirmation email) when contacting
+                support for the fastest response.
               </p>
+              <Link
+                to="/login"
+                className="inline-block mt-3 text-sm font-semibold text-[#1CA0DF] hover:underline"
+              >
+                Log in to your portal →
+              </Link>
             </div>
-          </div>
 
-          {/* FAQ */}
-          <div>
-            <h2 className="text-xl font-bold text-gray-800 mb-2">Frequently Asked Questions</h2>
-            <p className="text-gray-500 mb-8">Quick answers to the most common questions.</p>
-
-            <div className="space-y-4">
-              {FAQS.map(({ q, a }) => (
-                <div key={q} className="border border-gray-200 rounded-xl p-5">
-                  <h3 className="font-semibold text-gray-800 mb-2 text-sm">{q}</h3>
-                  <p className="text-gray-500 text-sm leading-relaxed">{a}</p>
-                </div>
-              ))}
+            {/* FAQ link */}
+            <div className="bg-white border border-[#E3E3E3] rounded-xl p-5">
+              <p className="text-sm font-semibold text-[#262D45] mb-1">Quick answers</p>
+              <p className="text-sm text-[#797979] mb-3">
+                Check our FAQ for instant answers to the most common questions.
+              </p>
+              <Link
+                to="/faq"
+                className="inline-flex items-center gap-1.5 text-sm font-semibold text-[#1CA0DF] hover:underline"
+              >
+                Browse the FAQ
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </Link>
             </div>
-          </div>
 
+          </div>
         </div>
       </div>
 
