@@ -14,7 +14,7 @@ class QuoteRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'event_type'          => ['required', 'integer', 'exists:event_types,uid'],
+            'event_type'          => ['required', 'integer', 'exists:event_types,id'],
             'event_state'         => ['required', 'string'],   // 2-char abbrev OR full name
             'persons'             => ['required', 'integer', 'min:1'],
             'event_dates'         => ['required', 'string'],   // comma-separated MM/DD/YYYY

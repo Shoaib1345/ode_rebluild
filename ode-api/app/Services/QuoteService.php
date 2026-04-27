@@ -11,9 +11,10 @@ use Illuminate\Support\Collection;
 class QuoteService
 {
     // Event type IDs that have custom broker fee rules
-    const BABY_SHOWER_ID = 66;
-    const WEDDING_ID     = 72;
-    const VENDOR_ID      = 32;
+    // These match the IDs in the NEW event_types table (seeded in EventTypeSeeder)
+    const BABY_SHOWER_ID = 5;   // Baby Shower
+    const WEDDING_ID     = 1;   // Wedding Reception
+    const VENDOR_ID      = 3;   // Vendor at Event
 
     // GL limit buckets that define the 4 plan options
     const PLAN_BUCKETS = [

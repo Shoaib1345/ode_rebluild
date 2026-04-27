@@ -19,10 +19,9 @@ class QuoteController extends Controller
      */
     public function eventTypes(): JsonResponse
     {
-        // Table PK is 'uid' — alias to 'id' so the frontend receives a consistent key
         $types = EventType::where('client_added', false)
             ->orderBy('event_type')
-            ->get(['uid as id', 'event_type']);
+            ->get(['id', 'event_type']);
 
         return response()->json($types);
     }
