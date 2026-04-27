@@ -94,6 +94,59 @@ class W9Controller extends Controller
         return $this->streamOrRedirect($upload);
     }
 
+    // ── Admin: global list ────────────────────────────────────────────────────
+
+    /**
+     * GET /api/admin/w9
+     *
+     * Paginated list of ALL W9 uploads across every user.
+     * Supports:
+     *   ?status=  pending | verified
+     *   ?search=  first_name / last_name / email
+     *   ?per_page default 25
+     *
+     * Ordered newest first so pending items float to the top when filtered.
+     */
+    public function adminIndex(Request $request): JsonResponse
+    {
+        $request->validate([
+            'status'   => ['nullable', 'in:pending,verified'],
+            'search'   => ['nullable', 'string', 'max:100'],
+            'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
+        ]);
+
+        $query = W9Upload::with([
+            'user:id,first_name,last_name,email,role_id',
+            'user.role:id,role_name,access_level',
+            'verifiedByUser:id,first_name,last_name',
+        ]);
+
+        if ($status = $request->input('status')) {
+            if ($status === 'verified') {
+                $query->whereNotNull('verified_at');
+            } else {
+                $query->whereNull('verified_at');
+            }
+        }
+
+        if ($search = $request->input('search')) {
+            $like = '%' . $search . '%';
+            $query->whereHas('user', fn ($q) =>
+                $q->where('first_name', 'like', $like)
+                  ->orWhere('last_name',  'like', $like)
+                  ->orWhere('email',      'like', $like)
+            );
+        }
+
+        $uploads = $query
+            ->orderBy('created_at', 'desc')
+            ->paginate((int) $request->input('per_page', 25));
+
+        return response()->json(
+            $uploads->through(fn ($u) => $this->formatUploadAdmin($u))
+        );
+    }
+
     // ── Admin: verify ──────────────────────────────────────────────────────────
 
     /**
@@ -145,6 +198,33 @@ class W9Controller extends Controller
     }
 
     // ── Helpers ────────────────────────────────────────────────────────────────
+
+    /** Full admin row format (includes user + verifier info). */
+    private function formatUploadAdmin(W9Upload $upload): array
+    {
+        return [
+            'id'          => $upload->id,
+            'user'        => $upload->user ? [
+                'id'         => $upload->user->id,
+                'first_name' => $upload->user->first_name,
+                'last_name'  => $upload->user->last_name,
+                'email'      => $upload->user->email,
+                'role'       => $upload->user->role ? [
+                    'role_name'    => $upload->user->role->role_name,
+                    'access_level' => $upload->user->role->access_level,
+                ] : null,
+            ] : null,
+            'file_name'   => $upload->file_name,
+            'file_size'   => $upload->file_size,
+            'status'      => $upload->status(),
+            'verified_at' => $upload->verified_at?->toIso8601String(),
+            'verified_by' => $upload->verifiedByUser ? [
+                'id'   => $upload->verifiedByUser->id,
+                'name' => trim("{$upload->verifiedByUser->first_name} {$upload->verifiedByUser->last_name}"),
+            ] : null,
+            'created_at'  => $upload->created_at->toIso8601String(),
+        ];
+    }
 
     private function formatUpload(W9Upload $upload, bool $showUrl): array
     {
