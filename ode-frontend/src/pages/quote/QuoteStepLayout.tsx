@@ -20,10 +20,17 @@ interface Props {
   innerNarrow?: boolean
   /** Previous URL — triggers back arrow + Save Quote in header */
   backTo?: string
+  /**
+   * When provided, replaces the 10-pill wizard bar with a 3-segment
+   * checkout progress bar (1 = Insured Info, 2 = Venue Details, 3 = Contact & Pay).
+   */
+  checkoutStep?: number
   children: React.ReactNode
 }
 
 // ─── Layout ───────────────────────────────────────────────────────────────────
+
+const CHECKOUT_LABELS = ['Insured Info', 'Venue Details', 'Contact & Pay'] as const
 
 export default function QuoteStepLayout({
   step,
@@ -33,6 +40,7 @@ export default function QuoteStepLayout({
   imageLarge,
   innerNarrow,
   backTo,
+  checkoutStep,
   children,
 }: Props) {
   const navigate = useNavigate()
@@ -132,31 +140,61 @@ export default function QuoteStepLayout({
 
         {/* ── Progress bar ─────────────────────────────────────────────────── */}
         <div className="px-5 sm:px-8" style={{ marginBottom: 44 }}>
-          <div
-            style={{
-              background: 'rgba(28,160,221,0.12)',
-              height: 16,
-              borderRadius: 40,
-              display: 'flex',
-              alignItems: 'center',
-              padding: '0 8px',
-              gap: 6,
-            }}
-          >
-            {Array.from({ length: TOTAL_STEPS }, (_, i) => (
-              <div
-                key={i}
-                style={{
-                  flex: 1,
-                  height: 4,
-                  borderRadius: 40,
-                  background: '#1087c3',
-                  opacity: i + 1 <= step ? 1 : 0.15,
-                  transition: 'opacity 0.3s ease',
-                }}
-              />
-            ))}
-          </div>
+          {checkoutStep != null ? (
+            /* ── Checkout 3-step progress bar ──────────────────────────────── */
+            <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+              {CHECKOUT_LABELS.map((label, i) => (
+                <div key={label} style={{ flex: 1, textAlign: 'center' }}>
+                  <div
+                    style={{
+                      height: 8,
+                      borderRadius: 40,
+                      background: '#1087c3',
+                      opacity: i + 1 <= checkoutStep ? 1 : 0.15,
+                      transition: 'opacity 0.3s ease',
+                      marginBottom: 6,
+                    }}
+                  />
+                  <span
+                    style={{
+                      fontSize: 11,
+                      fontWeight: 600,
+                      color: i + 1 <= checkoutStep ? '#105778' : '#9CA3AF',
+                    }}
+                  >
+                    {label}
+                  </span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            /* ── Wizard 10-pill progress bar ────────────────────────────────── */
+            <div
+              style={{
+                background: 'rgba(28,160,221,0.12)',
+                height: 16,
+                borderRadius: 40,
+                display: 'flex',
+                alignItems: 'center',
+                padding: '0 8px',
+                gap: 6,
+              }}
+            >
+              {Array.from({ length: TOTAL_STEPS }, (_, i) => (
+                <div
+                  key={i}
+                  style={{
+                    flex: 1,
+                    height: 4,
+                    borderRadius: 40,
+                    background: '#1087c3',
+                    opacity: i + 1 <= step ? 1 : 0.15,
+                    transition: 'opacity 0.3s ease',
+                  }}
+                />
+              ))}
+            </div>
+          )}
         </div>
 
         {/* ── Page content ─────────────────────────────────────────────────── */}
