@@ -1,0 +1,79 @@
+# ── OS & system files ────────────────────────────────────────────────────────
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# ── IDE / Editor ─────────────────────────────────────────────────────────────
+.idea/
+.vscode/
+.nova/
+.zed/
+.fleet/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# ── Secrets & environment ─────────────────────────────────────────────────────
+# NEVER commit real env files — copy .env.example and fill in values locally
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+*.p12
+auth.json
+
+# ── Internal dev docs (not part of the shipped product) ───────────────────────
+checkpoints/
+PROJECT_MEMORY.md
+
+# ── Local startup scripts (machine-specific paths / ports) ────────────────────
+start-api.bat
+start-frontend.bat
+start-queue.bat
+
+# ── Logs ─────────────────────────────────────────────────────────────────────
+*.log
+logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# ────────────────────────────────────────────────────────────────────────────
+# ode-frontend (React / Vite)
+# ────────────────────────────────────────────────────────────────────────────
+ode-frontend/node_modules/
+ode-frontend/dist/
+ode-frontend/dist-ssr/
+ode-frontend/*.local
+ode-frontend/.env
+ode-frontend/.env.*
+!ode-frontend/.env.example
+
+# ────────────────────────────────────────────────────────────────────────────
+# ode-api (Laravel)
+# ────────────────────────────────────────────────────────────────────────────
+ode-api/vendor/
+ode-api/node_modules/
+ode-api/.env
+ode-api/.env.*
+!ode-api/.env.example
+ode-api/.phpactor.json
+ode-api/.phpunit.result.cache
+ode-api/.phpunit.cache/
+ode-api/public/build/
+ode-api/public/hot/
+ode-api/public/storage/
+ode-api/storage/*.key
+ode-api/storage/pail/
+ode-api/storage/logs/*.log
+ode-api/bootstrap/cache/*.php
