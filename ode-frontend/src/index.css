@@ -1,44 +1,54 @@
 @import "tailwindcss";
+/* Google Fonts loaded via <link> in index.html — do NOT add @import here
+   (Tailwind v4 inlines thousands of rules before it, violating the CSS spec) */
 
 /* ── Brand design tokens ─────────────────────────────────────────────────── */
 :root {
-  /* Primary palette — extracted from legacy site CSS */
-  --brand:          #1CA0DF;   /* primary blue — buttons, accents */
-  --brand-dark:     #105778;   /* dark navy — header, sidebar */
-  --brand-hover:    #1786BB;   /* button hover */
-  --brand-light:    #EDF0FA;   /* light blue tint — section bg */
+  /* Primary palette */
+  --brand:          #1CA0DF;
+  --brand-dark:     #105778;
+  --brand-hover:    #1786BB;
+  --brand-light:    #EDF0FA;
+  --brand-link:     #4EA5D9;
 
-  --error:          #E0232C;   /* red — errors, destructive */
-  --error-hover:    #94181E;
+  --cta:            #E0232C;
+  --cta-hover:      #C51E26;
 
-  --text-heading:   #262D45;   /* dark heading text */
-  --text-body:      #505458;   /* standard body text */
-  --text-muted:     #797979;   /* secondary / muted text */
+  --text-heading:   #262D45;
+  --text-body:      #505458;
+  --text-muted:     #797979;
+  --text-link:      #4EA5D9;
 
-  --border:         #E3E3E3;   /* input / card borders */
-  --bg-page:        #EBEFF2;   /* page background — light blue-gray */
+  --border:         #E3E3E3;
+  --bg-page:        #EBEFF2;
   --bg-card:        #FFFFFF;
-  --bg-hover:       #F5F5F5;
+  --bg-footer:      #F8F8F8;
+  --bg-hover:       #cfefff;
 
   --shadow-card:    0px 5px 10px rgba(55, 106, 136, 0.10);
-  --shadow-modal:   0px 4px 54px rgba(0, 0, 0, 0.16);
+  --shadow-nav:     0 2px 8px rgba(0, 0, 0, 0.08);
 
-  /* Typography */
   --sans:    'Nunito Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif;
   --mono:    ui-monospace, Consolas, monospace;
 }
 
-/* ── Tailwind custom theme tokens (v4 @theme) ───────────────────────────── */
+/* ── Tailwind v4 @theme ──────────────────────────────────────────────────── */
 @theme {
-  --font-sans: 'Nunito Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  --font-sans:          'Nunito Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif;
 
-  /* Custom color utilities: bg-brand, text-brand, border-brand, etc. */
-  --color-brand:       #1CA0DF;
-  --color-brand-dark:  #105778;
-  --color-brand-hover: #1786BB;
-  --color-brand-light: #EDF0FA;
-  --color-page:        #EBEFF2;
-  --color-ode-error:   #E0232C;
+  --color-brand:        #1CA0DF;
+  --color-brand-dark:   #105778;
+  --color-brand-hover:  #1786BB;
+  --color-brand-light:  #EDF0FA;
+  --color-brand-link:   #4EA5D9;
+  --color-ode-cta:      #E0232C;
+  --color-ode-cta-hover:#C51E26;
+  --color-ode-heading:  #262D45;
+  --color-ode-body:     #505458;
+  --color-ode-muted:    #797979;
+  --color-page:         #EBEFF2;
+  --color-footer-bg:    #F8F8F8;
+  --color-ode-error:    #E0232C;
 }
 
 /* ── Base resets ─────────────────────────────────────────────────────────── */
@@ -55,6 +65,7 @@ html {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
+  scroll-behavior: smooth;
 }
 
 body {
@@ -62,9 +73,67 @@ body {
   min-height: 100vh;
 }
 
-/* #root fills the full viewport — no width constraint */
 #root {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
+}
+
+/* ── Public nav dropdown ─────────────────────────────────────────────────── */
+.nav-dropdown { position: relative; }
+.nav-dropdown-menu {
+  display: none;
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 50%;
+  transform: translateX(-50%);
+  min-width: 200px;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(55, 106, 136, 0.12);
+  padding: 6px 0;
+  z-index: 100;
+}
+.nav-dropdown:hover .nav-dropdown-menu,
+.nav-dropdown:focus-within .nav-dropdown-menu {
+  display: block;
+}
+.nav-dropdown-menu a {
+  display: block;
+  padding: 9px 18px;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--text-heading);
+  text-decoration: none;
+  white-space: nowrap;
+  transition: background 0.15s, color 0.15s;
+}
+.nav-dropdown-menu a:hover {
+  background: var(--bg-hover);
+  color: var(--brand);
+}
+
+/* ── Footer social icon hover ────────────────────────────────────────────── */
+.social-icon {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+.social-icon:hover {
+  transform: scale(1.15);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+}
+
+/* ── Logo spin on load (matches ode_new CSS) ─────────────────────────────── */
+.logo-spin-once {
+  animation: logoSpinOnce 1.5s linear 1;
+}
+@keyframes logoSpinOnce {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
 }
