@@ -10,7 +10,8 @@ const TOTAL_STEPS = 10
 interface Props {
   /** Overall wizard step number 1–10 */
   step: number
-  title: string
+  /** Page title — omit or pass empty string to suppress the centred h2 */
+  title?: string
   subtitle?: string
   /** Illustration image URL shown below the title */
   image?: string
@@ -18,6 +19,11 @@ interface Props {
   imageLarge?: boolean
   /** Narrow inner width — 640px default, 480px when true (event-type step) */
   innerNarrow?: boolean
+  /**
+   * Widen the content column to 1000px — used by the Payment page which
+   * renders a 2-column form + summary layout.
+   */
+  wide?: boolean
   /** Previous URL — triggers back arrow + Save Quote in header */
   backTo?: string
   /**
@@ -39,6 +45,7 @@ export default function QuoteStepLayout({
   image,
   imageLarge,
   innerNarrow,
+  wide,
   backTo,
   checkoutStep,
   children,
@@ -200,26 +207,28 @@ export default function QuoteStepLayout({
         {/* ── Page content ─────────────────────────────────────────────────── */}
         <div
           style={{
-            maxWidth: innerNarrow ? 426 : 608,
+            maxWidth: wide ? 1000 : (innerNarrow ? 426 : 608),
             width: '100%',
             margin: '0 auto',
             padding: '0 20px',
             boxSizing: 'border-box',
           }}
         >
-          {/* 1. Title */}
-          <h2
-            style={{
-              fontSize: 32,
-              lineHeight: '40px',
-              fontWeight: 900,
-              marginBottom: subtitle ? 12 : 30,
-              textAlign: 'center',
-              color: '#262D45',
-            }}
-          >
-            {title}
-          </h2>
+          {/* 1. Title (omitted when empty) */}
+          {title && (
+            <h2
+              style={{
+                fontSize: 32,
+                lineHeight: '40px',
+                fontWeight: 900,
+                marginBottom: subtitle ? 12 : 30,
+                textAlign: 'center',
+                color: '#262D45',
+              }}
+            >
+              {title}
+            </h2>
+          )}
 
           {/* 2. Subtitle */}
           {subtitle && (
