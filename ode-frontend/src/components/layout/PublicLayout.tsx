@@ -1,7 +1,12 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Link, NavLink, useLocation } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import api from '../../lib/axios'
+
+// Logo spins exactly once on page load — matches ode_new CSS animation
+let _logoHasSpun = false
+
+// ─── Types ───────────────────────────────────────────────────────────────────
 
 interface NavPage {
   id: number
@@ -9,6 +14,13 @@ interface NavPage {
   navbar_text: string | null
   slug: string
 }
+
+interface EventTypeNav {
+  id: number
+  event_type: string
+}
+
+// ─── Data hooks ───────────────────────────────────────────────────────────────
 
 function useNavPages() {
   return useQuery<NavPage[]>({
@@ -19,200 +31,480 @@ function useNavPages() {
   })
 }
 
+function useEventTypes() {
+  return useQuery<EventTypeNav[]>({
+    queryKey: ['event-types-nav'],
+    queryFn: () => api.get('/event-types').then(r => r.data),
+    staleTime: 15 * 60 * 1000,
+    placeholderData: [],
+  })
+}
+
+// ─── Dropdown component ───────────────────────────────────────────────────────
+
+function NavDropdown({
+  label,
+  children,
+}: {
+  label: string
+  children: React.ReactNode
+}) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLLIElement>(null)
+
+  // Close on outside click
+  useEffect(() => {
+    function handle(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handle)
+    return () => document.removeEventListener('mousedown', handle)
+  }, [])
+
+  return (
+    <li ref={ref} className="nav-dropdown">
+      <button
+        type="button"
+        onClick={() => setOpen(o => !o)}
+        onMouseEnter={() => setOpen(true)}
+        className="flex items-center gap-1 text-[13.5px] font-semibold text-[#262D45] hover:text-[#1CA0DF] transition-colors py-2 px-1 select-none"
+      >
+        {label}
+        <svg
+          className={`w-3.5 h-3.5 transition-transform duration-200 ${open ? 'rotate-180' : ''}`}
+          fill="none" stroke="currentColor" viewBox="0 0 24 24"
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+      {open && (
+        <div className="nav-dropdown-menu" onMouseLeave={() => setOpen(false)}>
+          {children}
+        </div>
+      )}
+    </li>
+  )
+}
+
+// ─── Header ───────────────────────────────────────────────────────────────────
+
+function Header() {
+  const [mobileOpen, setMobileOpen] = useState(false)
+  const [mobileSection, setMobileSection] = useState<string | null>(null)
+  const [scrolled, setScrolled] = useState(false)
+  const [logoSpun, setLogoSpun] = useState(_logoHasSpun)
+  const location = useLocation()
+  const { data: navPages = [] } = useNavPages()
+  const { data: eventTypes = [] } = useEventTypes()
+
+  // Transparent header only on homepage when not scrolled
+  const isHome       = location.pathname === '/'
+  const isTransparent = isHome && !scrolled && !mobileOpen
+
+  // Close mobile menu on route change
+  useEffect(() => { setMobileOpen(false); setMobileSection(null) }, [location.pathname])
+
+  // Add shadow when scrolled
+  useEffect(() => {
+    const handler = () => setScrolled(window.scrollY > 4)
+    window.addEventListener('scroll', handler, { passive: true })
+    return () => window.removeEventListener('scroll', handler)
+  }, [])
+
+  // Top 12 event types for the Events dropdown
+  const topEvents = eventTypes.slice(0, 12)
+
+  return (
+    <header
+      className={`sticky top-0 z-50 transition-all duration-300 ${
+        isTransparent
+          ? 'bg-transparent shadow-none'
+          : scrolled
+            ? 'bg-white shadow-[0_2px_12px_rgba(0,0,0,0.10)]'
+            : 'bg-white shadow-[0_1px_0_#E3E3E3]'
+      }`}
+    >
+      <div className="max-w-[1250px] mx-auto px-4 sm:px-6">
+        <nav className="flex items-center justify-between h-[72px]">
+
+          {/* ── Logo ────────────────────────────────────────────────────── */}
+          <Link to="/" className="flex items-center gap-2 flex-shrink-0 group">
+            <img
+              src="/assets/images/logo-img.svg"
+              alt=""
+              className={`h-[56px] w-auto ${logoSpun ? '' : 'logo-spin-once'}`}
+              onAnimationEnd={() => { _logoHasSpun = true; setLogoSpun(true) }}
+            />
+            <img
+              src="/assets/images/logo-text2.svg"
+              alt="One Day Event Insurance"
+              className="h-[42px] w-auto hidden sm:block mt-1"
+            />
+          </Link>
+
+          {/* ── Desktop nav ─────────────────────────────────────────────── */}
+          <ul className="hidden lg:flex items-center gap-1 list-none m-0 p-0 absolute left-1/2 -translate-x-1/2">
+
+            {/* Events */}
+            <NavDropdown label="Events">
+              {topEvents.length > 0 ? (
+                <>
+                  {topEvents.map(et => (
+                    <Link key={et.id} to="/onedayevent">{et.event_type}</Link>
+                  ))}
+                  <div className="border-t border-gray-100 mt-1 pt-1">
+                    <Link to="/onedayevent">View All Events →</Link>
+                  </div>
+                </>
+              ) : (
+                <Link to="/onedayevent">Get a Quote</Link>
+              )}
+            </NavDropdown>
+
+            {/* Learn */}
+            <NavDropdown label="Learn">
+              <Link to="/about">About Us</Link>
+              <Link to="/faq">FAQ's</Link>
+              <Link to="/blog">Blog</Link>
+              <Link to="/privacy">Privacy</Link>
+              {navPages.map(p => (
+                <Link key={p.id} to={`/pages/${p.slug}`}>{p.navbar_text ?? p.title}</Link>
+              ))}
+            </NavDropdown>
+
+            {/* Partners */}
+            <NavDropdown label="Partners">
+              <Link to="/partner-signup?type=agent">Insurance Agents</Link>
+              <Link to="/partner-signup?type=planner">Event Planners</Link>
+              <Link to="/partner-signup?type=venue">Venue Partners</Link>
+              <Link to="/affiliate-signup">Other</Link>
+            </NavDropdown>
+
+          </ul>
+
+          {/* ── Desktop buttons ──────────────────────────────────────────── */}
+          <div className="hidden lg:flex items-center gap-2.5">
+            <Link
+              to="/login"
+              className="text-[13.5px] font-semibold text-[#105778] border border-[#105778] rounded-full px-5 py-1.5 hover:bg-[#cfefff] transition-colors"
+            >
+              Login
+            </Link>
+            <Link
+              to="/contact"
+              className="text-[13.5px] font-semibold text-white bg-[#1CA0DF] rounded-full px-5 py-1.5 hover:bg-[#1786BB] transition-colors"
+            >
+              Contact
+            </Link>
+          </div>
+
+          {/* ── Mobile hamburger ────────────────────────────────────────── */}
+          <button
+            className="lg:hidden p-2 rounded-lg text-[#262D45] hover:bg-gray-100 transition"
+            onClick={() => setMobileOpen(o => !o)}
+            aria-label="Toggle menu"
+          >
+            {mobileOpen ? (
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            ) : (
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+            )}
+          </button>
+        </nav>
+      </div>
+
+      {/* ── Mobile menu ─────────────────────────────────────────────────── */}
+      {mobileOpen && (
+        <div className="lg:hidden bg-white border-t border-[#E3E3E3] shadow-lg">
+          <div className="max-w-[1100px] mx-auto px-4 py-3 space-y-0.5">
+
+            {/* Events accordion */}
+            <MobileAccordion
+              label="Events"
+              open={mobileSection === 'events'}
+              onToggle={() => setMobileSection(s => s === 'events' ? null : 'events')}
+            >
+              {topEvents.map(et => (
+                <Link key={et.id} to="/onedayevent" className="block py-2 pl-4 text-sm text-[#505458] hover:text-[#1CA0DF]">
+                  {et.event_type}
+                </Link>
+              ))}
+              <Link to="/onedayevent" className="block py-2 pl-4 text-sm font-semibold text-[#1CA0DF]">
+                View All Events →
+              </Link>
+            </MobileAccordion>
+
+            {/* Learn accordion */}
+            <MobileAccordion
+              label="Learn"
+              open={mobileSection === 'learn'}
+              onToggle={() => setMobileSection(s => s === 'learn' ? null : 'learn')}
+            >
+              <Link to="/about"   className="block py-2 pl-4 text-sm text-[#505458] hover:text-[#1CA0DF]">About Us</Link>
+              <Link to="/faq"     className="block py-2 pl-4 text-sm text-[#505458] hover:text-[#1CA0DF]">FAQ's</Link>
+              <Link to="/blog"    className="block py-2 pl-4 text-sm text-[#505458] hover:text-[#1CA0DF]">Blog</Link>
+              <Link to="/privacy" className="block py-2 pl-4 text-sm text-[#505458] hover:text-[#1CA0DF]">Privacy</Link>
+            </MobileAccordion>
+
+            {/* Partners accordion */}
+            <MobileAccordion
+              label="Partners"
+              open={mobileSection === 'partners'}
+              onToggle={() => setMobileSection(s => s === 'partners' ? null : 'partners')}
+            >
+              <Link to="/partner-signup?type=agent"    className="block py-2 pl-4 text-sm text-[#505458] hover:text-[#1CA0DF]">Insurance Agents</Link>
+              <Link to="/partner-signup?type=planner"  className="block py-2 pl-4 text-sm text-[#505458] hover:text-[#1CA0DF]">Event Planners</Link>
+              <Link to="/partner-signup?type=venue"    className="block py-2 pl-4 text-sm text-[#505458] hover:text-[#1CA0DF]">Venue Partners</Link>
+              <Link to="/affiliate-signup"             className="block py-2 pl-4 text-sm text-[#505458] hover:text-[#1CA0DF]">Other</Link>
+            </MobileAccordion>
+
+            {/* Bottom CTA row */}
+            <div className="flex gap-2 pt-3 pb-2 border-t border-[#E3E3E3] mt-2">
+              <Link
+                to="/login"
+                className="flex-1 text-center text-sm font-semibold text-[#105778] border border-[#105778] rounded-full py-2 hover:bg-[#cfefff] transition"
+              >
+                Login
+              </Link>
+              <Link
+                to="/contact"
+                className="flex-1 text-center text-sm font-semibold text-white bg-[#1CA0DF] rounded-full py-2 hover:bg-[#1786BB] transition"
+              >
+                Contact
+              </Link>
+            </div>
+          </div>
+        </div>
+      )}
+    </header>
+  )
+}
+
+// ─── Mobile accordion helper ──────────────────────────────────────────────────
+
+function MobileAccordion({
+  label,
+  open,
+  onToggle,
+  children,
+}: {
+  label: string
+  open: boolean
+  onToggle: () => void
+  children: React.ReactNode
+}) {
+  return (
+    <div>
+      <button
+        type="button"
+        onClick={onToggle}
+        className="w-full flex items-center justify-between py-3 text-sm font-semibold text-[#262D45] hover:text-[#1CA0DF] transition-colors"
+      >
+        {label}
+        <svg
+          className={`w-4 h-4 transition-transform ${open ? 'rotate-180' : ''}`}
+          fill="none" stroke="currentColor" viewBox="0 0 24 24"
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+      {open && <div className="pb-2">{children}</div>}
+    </div>
+  )
+}
+
+// ─── Footer ───────────────────────────────────────────────────────────────────
+
+const SOCIAL = [
+  {
+    href: 'https://www.instagram.com/onedayeventinsurance/',
+    src: '/assets/images/icon-instagram.svg',
+    alt: 'Instagram',
+  },
+  {
+    href: 'https://www.facebook.com/onedayeventinsurance',
+    src: '/assets/images/icon-facebook.svg',
+    alt: 'Facebook',
+  },
+  {
+    href: 'https://twitter.com/onedayeventins',
+    src: '/assets/images/icon-twitter.svg',
+    alt: 'Twitter',
+  },
+  {
+    href: 'https://www.linkedin.com/company/one-day-event-insurance/',
+    src: '/assets/images/icon-linkedin.svg',
+    alt: 'LinkedIn',
+  },
+  {
+    href: 'https://www.pinterest.com/onedayeventinsurance/',
+    src: '/assets/images/icon-pinterest.svg',
+    alt: 'Pinterest',
+  },
+]
+
+function Footer() {
+  const { data: navPages = [] } = useNavPages()
+
+  return (
+    <footer className="bg-[#F8F8F8] border-t border-[#E3E3E3]">
+      <div className="max-w-[1100px] mx-auto px-4 sm:px-6 py-10">
+
+        {/* ── Main footer row ───────────────────────────────────────────── */}
+        <div className="flex flex-wrap items-start justify-between gap-8">
+
+          {/* Left: Logo + nav links */}
+          <div className="flex flex-wrap items-start gap-10">
+
+            {/* Logo */}
+            <Link to="/" className="flex items-center gap-2 flex-shrink-0">
+              <img src="/assets/images/logo-img.svg" alt="" className="h-10 w-auto" />
+              <img src="/assets/images/logo-text2.svg" alt="One Day Event Insurance" className="h-5 w-auto" />
+            </Link>
+
+            {/* Nav columns */}
+            <div className="flex flex-wrap gap-10">
+
+              {/* Partners */}
+              <div>
+                <p className="text-[13px] font-[900] text-[#262D45] mb-3 uppercase tracking-wide">Partners</p>
+                <ul className="space-y-1.5">
+                  {[
+                    { to: '/partner-signup?type=agent',   label: 'Insurance Agents' },
+                    { to: '/partner-signup?type=planner', label: 'Event Planners' },
+                    { to: '/partner-signup?type=venue',   label: 'Venue Partners' },
+                    { to: '/affiliate-signup',            label: 'Other' },
+                  ].map(({ to, label }) => (
+                    <li key={to}>
+                      <NavLink
+                        to={to}
+                        className="text-[13.5px] font-semibold text-[#262D45] hover:text-[#4EA5D9] transition-colors"
+                      >
+                        {label}
+                      </NavLink>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              {/* Learn */}
+              <div>
+                <p className="text-[13px] font-[900] text-[#262D45] mb-3 uppercase tracking-wide">Learn</p>
+                <ul className="space-y-1.5">
+                  {[
+                    { to: '/about',   label: 'About Us' },
+                    { to: '/faq',     label: "FAQ's" },
+                    { to: '/blog',    label: 'Blog' },
+                    { to: '/privacy', label: 'Privacy' },
+                    { to: '/terms',   label: 'Terms' },
+                  ].map(({ to, label }) => (
+                    <li key={to}>
+                      <NavLink
+                        to={to}
+                        className="text-[13.5px] font-semibold text-[#262D45] hover:text-[#4EA5D9] transition-colors"
+                      >
+                        {label}
+                      </NavLink>
+                    </li>
+                  ))}
+                  {navPages.map(p => (
+                    <li key={p.id}>
+                      <NavLink
+                        to={`/pages/${p.slug}`}
+                        className="text-[13.5px] font-semibold text-[#262D45] hover:text-[#4EA5D9] transition-colors"
+                      >
+                        {p.navbar_text ?? p.title}
+                      </NavLink>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              {/* Contact */}
+              <div>
+                <p className="text-[13px] font-[900] text-[#262D45] mb-3 uppercase tracking-wide">Contact</p>
+                <ul className="space-y-1.5">
+                  <li>
+                    <a
+                      href="mailto:support@onedayevent.com"
+                      className="text-[13.5px] font-semibold text-[#262D45] hover:text-[#4EA5D9] transition-colors"
+                    >
+                      support@onedayevent.com
+                    </a>
+                  </li>
+                  <li>
+                    <NavLink
+                      to="/contact"
+                      className="text-[13.5px] font-semibold text-[#262D45] hover:text-[#4EA5D9] transition-colors"
+                    >
+                      Contact Form
+                    </NavLink>
+                  </li>
+                </ul>
+              </div>
+
+            </div>
+          </div>
+
+          {/* Right: Get a Quote CTA + Social */}
+          <div className="flex flex-col items-start sm:items-end gap-5">
+            <Link
+              to="/onedayevent"
+              className="inline-block bg-[#1CA0DF] text-white text-sm font-semibold px-6 py-2.5 rounded-full hover:bg-[#1786BB] transition-colors shadow-sm"
+            >
+              Get a Quote
+            </Link>
+            <div className="flex items-center gap-3">
+              {SOCIAL.map(({ href, src, alt }) => (
+                <a
+                  key={href}
+                  href={href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="social-icon"
+                  aria-label={alt}
+                >
+                  <img src={src} alt={alt} className="w-6 h-6" />
+                </a>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* ── Copyright bar ────────────────────────────────────────────── */}
+        <div className="mt-8 pt-5 border-t border-[#E3E3E3] flex flex-col sm:flex-row items-center justify-between gap-2">
+          <strong className="text-[12px] font-[900] text-[#262D45] tracking-wide uppercase">
+            © {new Date().getFullYear()} ONEDAYEVENT
+          </strong>
+          <p className="text-[12px] text-[#797979]">
+            Event insurance products are subject to underwriting approval.
+          </p>
+        </div>
+      </div>
+    </footer>
+  )
+}
+
+// ─── Layout shell ─────────────────────────────────────────────────────────────
+
 interface Props {
   children: React.ReactNode
 }
 
 export default function PublicLayout({ children }: Props) {
-  const [mobileOpen, setMobileOpen] = useState(false)
-  const { data: navPages = [] } = useNavPages()
-  const location = useLocation()
-
-  // Close mobile menu on navigation
-  useEffect(() => { setMobileOpen(false) }, [location.pathname])
-
-  const staticLinks = [
-    { to: '/blog',    label: 'Blog' },
-    { to: '/about',   label: 'About' },
-    { to: '/contact', label: 'Contact' },
-  ]
-
-  const cmsLinks: { to: string; label: string }[] = navPages.map(p => ({
-    to:    `/pages/${p.slug}`,
-    label: p.navbar_text ?? p.title,
-  }))
-
-  const allLinks = [...cmsLinks, ...staticLinks]
-
   return (
-    <div className="min-h-screen flex flex-col bg-[#EBEFF2]">
-
-      {/* ── Nav ─────────────────────────────────────────────────────────── */}
-      <header className="bg-[#105778] text-white shadow-md sticky top-0 z-30">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 flex items-center justify-between h-16">
-
-          {/* Brand */}
-          <Link to="/" className="text-lg font-bold tracking-tight hover:opacity-90 transition flex-shrink-0">
-            One Day Event Insurance
-          </Link>
-
-          {/* Desktop nav links */}
-          <nav className="hidden md:flex items-center gap-6">
-            {allLinks.map(({ to, label }) => (
-              <NavLink
-                key={to}
-                to={to}
-                className={({ isActive }) =>
-                  'text-sm font-medium transition ' +
-                  (isActive ? 'text-white underline underline-offset-4' : 'text-white/70 hover:text-white')
-                }
-              >
-                {label}
-              </NavLink>
-            ))}
-          </nav>
-
-          {/* Desktop CTA */}
-          <div className="hidden md:flex items-center gap-3">
-            <Link
-              to="/login"
-              className="text-sm text-white/70 hover:text-white transition"
-            >
-              Sign in
-            </Link>
-            <Link
-              to="/onedayevent"
-              className="bg-[#1CA0DF] text-white text-sm font-semibold px-5 py-2 rounded-full hover:bg-[#1786BB] transition"
-            >
-              Get a Quote
-            </Link>
-          </div>
-
-          {/* Mobile hamburger */}
-          <button
-            className="md:hidden p-2 rounded hover:bg-white/10 transition"
-            onClick={() => setMobileOpen(o => !o)}
-            aria-label="Toggle menu"
-          >
-            {mobileOpen ? (
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            ) : (
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-              </svg>
-            )}
-          </button>
-        </div>
-
-        {/* Mobile menu */}
-        {mobileOpen && (
-          <div className="md:hidden bg-[#0b3f57] border-t border-white/10 px-4 py-3 space-y-1">
-            {allLinks.map(({ to, label }) => (
-              <Link
-                key={to}
-                to={to}
-                onClick={() => setMobileOpen(false)}
-                className="block py-2 text-sm text-white/80 hover:text-white transition"
-              >
-                {label}
-              </Link>
-            ))}
-            <div className="pt-3 border-t border-white/10 flex flex-col gap-2">
-              <Link
-                to="/login"
-                onClick={() => setMobileOpen(false)}
-                className="block py-2 text-sm text-white/70 hover:text-white"
-              >
-                Sign in
-              </Link>
-              <Link
-                to="/onedayevent"
-                onClick={() => setMobileOpen(false)}
-                className="block text-center bg-[#1CA0DF] text-white text-sm font-semibold px-4 py-2 rounded-full hover:bg-[#1786BB] transition"
-              >
-                Get a Quote
-              </Link>
-            </div>
-          </div>
-        )}
-      </header>
-
-      {/* ── Page content ────────────────────────────────────────────────── */}
+    <div className="min-h-screen flex flex-col">
+      <Header />
       <main className="flex-1">
         {children}
       </main>
-
-      {/* ── Footer ──────────────────────────────────────────────────────── */}
-      <footer className="bg-[#262D45] text-gray-300 pt-12 pb-6">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 mb-10">
-
-            {/* Brand column */}
-            <div>
-              <h3 className="text-white font-bold text-base mb-3">One Day Event Insurance</h3>
-              <p className="text-sm text-gray-400 leading-relaxed">
-                Instant event insurance quotes from multiple carriers. Weddings, parties, concerts, and more.
-              </p>
-            </div>
-
-            {/* Get covered */}
-            <div>
-              <h4 className="text-white font-semibold text-sm mb-3 uppercase tracking-wider">Get Covered</h4>
-              <ul className="space-y-2 text-sm">
-                <li><Link to="/onedayevent" className="hover:text-white transition">Get a Quote</Link></li>
-                <li><Link to="/affiliate-signup" className="hover:text-white transition">Become an Affiliate</Link></li>
-                <li><Link to="/partner-signup?type=agent" className="hover:text-white transition">Agent Program</Link></li>
-                <li><Link to="/partner-signup?type=planner" className="hover:text-white transition">Venue / Planner Program</Link></li>
-              </ul>
-            </div>
-
-            {/* Company */}
-            <div>
-              <h4 className="text-white font-semibold text-sm mb-3 uppercase tracking-wider">Company</h4>
-              <ul className="space-y-2 text-sm">
-                <li><Link to="/about" className="hover:text-white transition">About Us</Link></li>
-                <li><Link to="/contact" className="hover:text-white transition">Contact</Link></li>
-                <li><Link to="/blog" className="hover:text-white transition">Blog</Link></li>
-                {navPages.map(p => (
-                  <li key={p.id}>
-                    <Link to={`/pages/${p.slug}`} className="hover:text-white transition">
-                      {p.navbar_text ?? p.title}
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            {/* Legal */}
-            <div>
-              <h4 className="text-white font-semibold text-sm mb-3 uppercase tracking-wider">Legal</h4>
-              <ul className="space-y-2 text-sm">
-                <li><Link to="/terms" className="hover:text-white transition">Terms of Service</Link></li>
-                <li><Link to="/privacy" className="hover:text-white transition">Privacy Policy</Link></li>
-              </ul>
-              <div className="mt-6">
-                <p className="text-xs text-gray-500">
-                  Event insurance products are subject to underwriting approval.
-                  Coverage terms and conditions apply.
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div className="border-t border-white/10 pt-6 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-gray-500">
-            <p>&copy; {new Date().getFullYear()} One Day Event Insurance. All rights reserved.</p>
-            <p>
-              Questions?{' '}
-              <a href="mailto:support@onedayevent.com" className="hover:text-gray-300 transition">
-                support@onedayevent.com
-              </a>
-            </p>
-          </div>
-        </div>
-      </footer>
-
+      <Footer />
     </div>
   )
 }
