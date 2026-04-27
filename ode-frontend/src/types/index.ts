@@ -80,6 +80,16 @@ export interface QuoteParams {
   privateResidence: 0 | 1
   isSetVenue: 0 | 1
   timezone: string
+  // ── Wizard intermediate state (not sent to the quotes API) ──────────────
+  /** Raw alcohol selection from QuoteAlcoholPage */
+  alcohol_served?: string          // 'Sold' | 'Served' | 'BYOB' | 'no_alcohol'
+  is_sold_profitable?: string      // 'Yes' | 'No'
+  is_charge_ticket?: string        // 'Yes' | 'No'
+  special_activities?: string      // 'Yes' | 'No'
+  event_special_act_detail?: string
+  // ── Vendor-specific ──────────────────────────────────────────────────────
+  isVendor?: boolean               // true when "Vendor at Event" flow
+  vendorActivity?: string          // Selected vendor type from VendorActivityPage
 }
 
 // ─── Lead ────────────────────────────────────────────────────────────────────

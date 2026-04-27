@@ -10,11 +10,15 @@ interface QuoteState {
   selectedPlan: QuotePlan | null
   // Step 4 — customer info (filled form data)
   customerInfo: Record<string, unknown>
+  // Chunk 44 — pending quote save/resume token
+  pendingQuoteId: string | null
 
   setParams: (params: Partial<QuoteParams>) => void
   setPlans: (plans: QuotePlans) => void
   setSelectedPlan: (plan: QuotePlan) => void
   setCustomerInfo: (info: Record<string, unknown>) => void
+  setPendingQuoteId: (id: string | null) => void
+  restoreFromPending: (wizardState: Record<string, unknown>, token: string) => void
   reset: () => void
 }
 
@@ -23,6 +27,7 @@ const initialState = {
   plans: null,
   selectedPlan: null,
   customerInfo: {},
+  pendingQuoteId: null as string | null,
 }
 
 export const useQuoteStore = create<QuoteState>((set) => ({
@@ -37,6 +42,19 @@ export const useQuoteStore = create<QuoteState>((set) => ({
 
   setCustomerInfo: (info) =>
     set((state) => ({ customerInfo: { ...state.customerInfo, ...info } })),
+
+  setPendingQuoteId: (id) => set({ pendingQuoteId: id }),
+
+  restoreFromPending: (wizardState, token) => {
+    // Rebuild quoteStore from a saved wizard_state snapshot
+    set({
+      params:         (wizardState.params        as Partial<QuoteParams>)          ?? {},
+      plans:          (wizardState.plans          as QuotePlans | null)             ?? null,
+      selectedPlan:   (wizardState.selectedPlan   as QuotePlan | null)             ?? null,
+      customerInfo:   (wizardState.customerInfo   as Record<string, unknown>)      ?? {},
+      pendingQuoteId: token,
+    })
+  },
 
   reset: () => set(initialState),
 }))
