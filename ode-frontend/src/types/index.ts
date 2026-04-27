@@ -87,6 +87,9 @@ export interface QuoteParams {
   is_charge_ticket?: string        // 'Yes' | 'No'
   special_activities?: string      // 'Yes' | 'No'
   event_special_act_detail?: string
+  // ── Event description (step 8) ───────────────────────────────────────────
+  event_name?: string
+  event_description?: string
   // ── Vendor-specific ──────────────────────────────────────────────────────
   isVendor?: boolean               // true when "Vendor at Event" flow
   vendorActivity?: string          // Selected vendor type from VendorActivityPage
