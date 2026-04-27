@@ -68,7 +68,13 @@ export default function QuoteLocationPage() {
       <div style={{ position: 'relative', marginBottom: 26 }}>
         <select
           value={state}
-          onChange={(e) => { setState(e.target.value); setError('') }}
+          onChange={(e) => {
+            const newState = e.target.value
+            setState(newState)
+            setError('')
+            // Auto-default "No" for private residence when state is first selected
+            if (newState && !privateRes) setPrivateRes('No')
+          }}
           style={{
             width: '100%',
             height: 54,
@@ -97,8 +103,8 @@ export default function QuoteLocationPage() {
         </div>
       </div>
 
-      {/* ── Private residence (hidden for vendors) ────────────────────────── */}
-      {!isVendor && (
+      {/* ── Private residence — only shown once a state is selected ─────────── */}
+      {!isVendor && state && (
         <div style={{ marginBottom: 16 }}>
           <p style={{ fontSize: 15, fontWeight: 700, color: '#262D45', marginBottom: 16, textAlign: 'center' }}>
             Is the event held at a private residence?
