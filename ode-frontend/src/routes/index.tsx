@@ -20,8 +20,11 @@ const QuoteLocationPage    = lazy(() => import('../pages/quote/QuoteLocationPage
 const QuoteAlcoholPage     = lazy(() => import('../pages/quote/QuoteAlcoholPage'))
 const QuoteGuestsPage      = lazy(() => import('../pages/quote/QuoteGuestsPage'))
 const QuoteActivitiesPage  = lazy(() => import('../pages/quote/QuoteActivitiesPage'))
-const QuoteAddonsPage      = lazy(() => import('../pages/quote/QuoteAddonsPage'))
-const QuotePlansPage       = lazy(() => import('../pages/quote/QuotePlansPage'))
+const QuoteAddonsPage       = lazy(() => import('../pages/quote/QuoteAddonsPage'))
+const QuoteDescriptionPage  = lazy(() => import('../pages/quote/QuoteDescriptionPage'))
+const QuotePlansPage        = lazy(() => import('../pages/quote/QuotePlansPage'))
+const QuoteInsuredPage      = lazy(() => import('../pages/quote/QuoteInsuredPage'))
+const QuoteVenuePage        = lazy(() => import('../pages/quote/QuoteVenuePage'))
 const QuoteInfoPage        = lazy(() => import('../pages/quote/QuoteInfoPage'))
 const QuotePaymentPage     = lazy(() => import('../pages/quote/QuotePaymentPage'))
 const QuoteConfirmationPage = lazy(() => import('../pages/quote/QuoteConfirmationPage'))
@@ -138,8 +141,11 @@ export default function AppRoutes() {
         <Route path="/quote/guests"             element={<QuoteGuestsPage />} />
         <Route path="/quote/activities"         element={<QuoteActivitiesPage />} />
         <Route path="/quote/addons"             element={<QuoteAddonsPage />} />
-        {/* Step 8–10: Plans, Info, Payment */}
+        <Route path="/quote/description"        element={<QuoteDescriptionPage />} />
+        {/* Step 8–10: Plans, Checkout (Insured → Venue → Info), Payment */}
         <Route path="/quote/plans"         element={<QuotePlansPage />} />
+        <Route path="/quote/insured"       element={<QuoteInsuredPage />} />
+        <Route path="/quote/venue"         element={<QuoteVenuePage />} />
         <Route path="/quote/info"          element={<QuoteInfoPage />} />
         <Route path="/quote/payment"       element={<QuotePaymentPage />} />
         <Route path="/quote/confirmation/:leadNumber" element={<QuoteConfirmationPage />} />
