@@ -289,7 +289,7 @@ export default function QuotePlansPage() {
 
   function handleSelect(plan: QuotePlan) {
     setSelected(plan)
-    navigate('/quote/info')
+    navigate('/quote/insured')
   }
 
   return (
