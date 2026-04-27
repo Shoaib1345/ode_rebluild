@@ -11,24 +11,22 @@ import api from '../../lib/axios'
 import { useQuoteStore } from '../../stores/quoteStore'
 import QuoteLayout from './QuoteLayout'
 
-// Initialise Stripe outside render to avoid re-creating on each render
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PK as string)
-
-// ─── Card Element styles ──────────────────────────────────────────────────────
 
 const CARD_STYLE = {
   style: {
     base: {
       fontSize: '14px',
-      color: '#374151',
-      fontFamily: 'ui-sans-serif, system-ui, sans-serif',
+      color: '#262D45',
+      fontFamily: "'Nunito Sans', ui-sans-serif, sans-serif",
       '::placeholder': { color: '#9ca3af' },
+      lineHeight: '1.5',
     },
-    invalid: { color: '#dc2626' },
+    invalid: { color: '#E0232C' },
   },
 }
 
-// ─── Inner form (needs to be inside <Elements>) ───────────────────────────────
+// ─── Inner form ───────────────────────────────────────────────────────────────
 
 function PaymentForm() {
   const navigate     = useNavigate()
@@ -40,10 +38,9 @@ function PaymentForm() {
   const customerInfo = useQuoteStore((s) => s.customerInfo)
   const reset        = useQuoteStore((s) => s.reset)
 
-  const [error,     setError]     = useState<string | null>(null)
+  const [error,      setError]      = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
 
-  // Guard — should never reach here without a plan, but just in case
   useEffect(() => {
     if (!selectedPlan) navigate('/quote/plans', { replace: true })
   }, [selectedPlan, navigate])
@@ -60,7 +57,6 @@ function PaymentForm() {
     setSubmitting(true)
 
     try {
-      // 1. Tokenise the card → PaymentMethod
       const cardEl = elements.getElement(CardElement)
       if (!cardEl) throw new Error('Card element not found.')
 
@@ -86,9 +82,7 @@ function PaymentForm() {
         return
       }
 
-      // 2. POST to backend — assemble full payload
       const payload = {
-        // Plan
         rate_id:        selectedPlan.rate_id,
         carrier:        selectedPlan.carrier,
         premium:        selectedPlan.premium,
@@ -98,7 +92,6 @@ function PaymentForm() {
         total:          selectedPlan.total,
         min_limit:      selectedPlan.min_limit,
         max_limit:      selectedPlan.max_limit,
-        // Quote params
         event_type_id:       params.eventType,
         event_type_name:     params.eventTypeName,
         event_dates:         params.eventDates,
@@ -113,15 +106,11 @@ function PaymentForm() {
         private_residence:   params.privateResidence  ?? 0,
         is_venue:            params.isSetVenue        ?? 0,
         timezone:            params.timezone          ?? '',
-        // Customer info
         ...customerInfo,
-        // Payment
         stripe_payment_method_id: paymentMethod!.id,
       }
 
       const res = await api.post<{ lead_number: number; message: string }>('/leads', payload)
-
-      // 3. Clear store and navigate to confirmation
       reset()
       navigate(`/quote/confirmation/${res.data.lead_number}`, { replace: true })
 
@@ -136,120 +125,197 @@ function PaymentForm() {
   }
 
   return (
-    <QuoteLayout step={5}>
-      {/* Back */}
-      <div className="mb-5">
+    <QuoteLayout step={10}>
+
+      {/* ── Back ──────────────────────────────────────────────────────── */}
+      <div className="mb-6">
         <button
           type="button"
           onClick={() => navigate('/quote/info')}
-          className="text-[#1CA0DF] hover:text-[#105778] text-sm font-medium"
+          className="inline-flex items-center gap-1 text-sm text-[#1CA0DF] hover:text-[#105778] font-medium transition"
         >
-          ← Back
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+          </svg>
+          Back to Your Info
         </button>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-5">
 
-        {/* ── Order summary ──────────────────────────────────────────────── */}
-        <div className="lg:col-span-1">
-          <div className="bg-white rounded-2xl shadow-md px-6 py-6 space-y-4">
-            <h2 className="text-base font-semibold text-gray-700 pb-2 border-b border-gray-100">
-              Order summary
-            </h2>
+        {/* ── Order summary ─────────────────────────────────────────────── */}
+        <div className="lg:col-span-2">
+          <div className="bg-white rounded-2xl shadow-[0px_4px_12px_rgba(55,106,136,0.10)] overflow-hidden sticky top-6">
 
-            <div className="space-y-2 text-sm text-gray-600">
-              <div className="flex justify-between">
-                <span>Event type</span>
-                <span className="font-medium text-gray-800">{params.eventTypeName}</span>
-              </div>
-              <div className="flex justify-between">
-                <span>Coverage</span>
-                <span className="font-medium text-gray-800">
-                  ${selectedPlan.min_limit}M / ${selectedPlan.max_limit}M
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span>Carrier</span>
-                <span className="font-medium text-gray-800">{selectedPlan.carrier}</span>
-              </div>
+            {/* Header */}
+            <div className="bg-[#105778] px-5 py-4">
+              <h2 className="text-sm font-bold text-white">Order Summary</h2>
             </div>
 
-            <div className="border-t border-gray-100 pt-3 space-y-1.5 text-sm">
-              <div className="flex justify-between text-gray-600">
-                <span>Premium</span>
-                <span>${selectedPlan.premium.toFixed(2)}</span>
+            <div className="px-5 py-5 space-y-4">
+              {/* Event info */}
+              <div className="space-y-2 text-sm">
+                {[
+                  { label: 'Event type', value: params.eventTypeName },
+                  { label: 'State',      value: params.event_state },
+                  { label: 'Date',       value: params.eventDates?.split(',')[0] },
+                  { label: 'Guests',     value: params.number_of_persons ? `${params.number_of_persons}` : undefined },
+                ].filter((r) => r.value).map((row) => (
+                  <div key={row.label} className="flex justify-between gap-2">
+                    <span className="text-[#797979]">{row.label}</span>
+                    <span className="font-semibold text-[#262D45] text-right">{row.value}</span>
+                  </div>
+                ))}
               </div>
-              <div className="flex justify-between text-gray-600">
-                <span>Broker fee</span>
-                <span>${selectedPlan.broker_fee.toFixed(2)}</span>
+
+              <div className="border-t border-[#E3E3E3]" />
+
+              {/* Coverage */}
+              <div className="bg-[#EDF0FA] rounded-xl p-3.5">
+                <p className="text-xs font-bold text-[#105778] uppercase tracking-wide mb-2">Coverage</p>
+                <p className="text-base font-extrabold text-[#262D45]">
+                  ${selectedPlan.min_limit}M / ${selectedPlan.max_limit}M
+                </p>
+                <p className="text-xs text-[#797979]">Per occurrence / Aggregate · {selectedPlan.carrier}</p>
               </div>
-              <div className="flex justify-between text-gray-600">
-                <span>Processing fee</span>
-                <span>${selectedPlan.processing_fee.toFixed(2)}</span>
+
+              <div className="border-t border-[#E3E3E3]" />
+
+              {/* Price breakdown */}
+              <div className="space-y-2 text-sm">
+                {[
+                  { label: 'Premium',        value: selectedPlan.premium },
+                  { label: 'Broker fee',     value: selectedPlan.broker_fee },
+                  { label: 'Processing fee', value: selectedPlan.processing_fee },
+                  ...(selectedPlan.extra_charge > 0 ? [{ label: 'Private residence', value: selectedPlan.extra_charge }] : []),
+                ].map((row) => (
+                  <div key={row.label} className="flex justify-between text-[#505458]">
+                    <span>{row.label}</span>
+                    <span>${row.value.toFixed(2)}</span>
+                  </div>
+                ))}
               </div>
-              {selectedPlan.extra_charge > 0 && (
-                <div className="flex justify-between text-gray-600">
-                  <span>Extra charges</span>
-                  <span>${selectedPlan.extra_charge.toFixed(2)}</span>
+
+              {/* Total */}
+              <div className="border-t-2 border-[#1CA0DF] pt-3 flex justify-between items-baseline">
+                <span className="text-sm font-bold text-[#262D45]">Total due today</span>
+                <span className="text-2xl font-extrabold text-[#105778]">${total}</span>
+              </div>
+
+              {/* Trust badges */}
+              <div className="flex flex-col gap-2 pt-2">
+                <div className="flex items-center gap-2 text-xs text-[#797979]">
+                  <svg className="w-4 h-4 text-[#1CA0DF] flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                  </svg>
+                  256-bit SSL encryption
                 </div>
-              )}
-              <div className="flex justify-between font-bold text-gray-800 text-base pt-1 border-t border-gray-100">
-                <span>Total due today</span>
-                <span className="text-[#105778]">${total}</span>
+                <div className="flex items-center gap-2 text-xs text-[#797979]">
+                  <svg className="w-4 h-4 text-[#1CA0DF] flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                  </svg>
+                  A-rated carrier, licensed &amp; bonded
+                </div>
+                <div className="flex items-center gap-2 text-xs text-[#797979]">
+                  <svg className="w-4 h-4 text-[#1CA0DF] flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                  </svg>
+                  Certificate issued same day
+                </div>
               </div>
             </div>
           </div>
         </div>
 
-        {/* ── Payment form ───────────────────────────────────────────────── */}
-        <div className="lg:col-span-2">
+        {/* ── Payment form ─────────────────────────────────────────────── */}
+        <div className="lg:col-span-3">
           <form onSubmit={handleSubmit} noValidate>
-            <div className="bg-white rounded-2xl shadow-md px-8 py-8 space-y-6">
-              <h2 className="text-base font-semibold text-gray-700 pb-2 border-b border-gray-100">
-                Payment details
-              </h2>
+            <div className="bg-white rounded-2xl shadow-[0px_4px_12px_rgba(55,106,136,0.10)] overflow-hidden">
 
-              {/* Card element */}
-              <div>
-                <label className="block text-sm text-gray-600 mb-2">
-                  Credit or debit card
-                </label>
-                <div className="rounded-lg border border-gray-300 px-3 py-3 focus-within:ring-2 focus-within:ring-[#1CA0DF]">
-                  <CardElement options={CARD_STYLE} />
-                </div>
+              {/* Header */}
+              <div className="flex items-center gap-3 px-6 py-4 bg-[#EDF0FA] border-b border-[#E3E3E3]">
+                <svg className="w-5 h-5 text-[#1CA0DF]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                </svg>
+                <h2 className="text-[15px] font-bold text-[#262D45]">Payment details</h2>
               </div>
 
-              {/* Inline error */}
-              {error && (
-                <div className="rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
-                  {error}
+              <div className="px-6 py-6 space-y-5">
+
+                {/* Card element */}
+                <div>
+                  <label className="block text-xs font-semibold text-[#262D45] mb-2">
+                    Credit or debit card <span className="text-[#E0232C]">*</span>
+                  </label>
+                  <div className="rounded-xl border border-[#E3E3E3] bg-white px-4 py-3.5 focus-within:ring-2 focus-within:ring-[#1CA0DF]/30 focus-within:border-[#1CA0DF] transition">
+                    <CardElement options={CARD_STYLE} />
+                  </div>
+                  <p className="mt-1.5 text-xs text-[#797979]">
+                    We accept Visa, Mastercard, Amex, and Discover.
+                  </p>
                 </div>
-              )}
 
-              {/* Security notice */}
-              <p className="text-xs text-gray-400">
-                🔒 Payments are processed securely by Stripe. Your card details are never stored on
-                our servers.
-              </p>
+                {/* Error */}
+                {error && (
+                  <div className="rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700 flex items-start gap-2">
+                    <svg className="w-4 h-4 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                    </svg>
+                    {error}
+                  </div>
+                )}
 
-              <button
-                type="submit"
-                disabled={!stripe || submitting}
-                className="w-full py-3 rounded-lg bg-[#1CA0DF] hover:bg-[#1786BB] text-white font-semibold text-sm transition-colors disabled:opacity-40"
-              >
-                {submitting
-                  ? 'Processing…'
-                  : `Pay $${total} and Get Your Policy`}
-              </button>
+                {/* Stripe notice */}
+                <div className="flex items-start gap-2.5 bg-gray-50 rounded-xl border border-[#E3E3E3] p-4">
+                  <svg className="w-4 h-4 text-[#797979] flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                  </svg>
+                  <p className="text-xs text-[#797979] leading-relaxed">
+                    Payments are processed securely by{' '}
+                    <span className="font-semibold text-[#505458]">Stripe</span>.
+                    Your card details are never stored on our servers.
+                  </p>
+                </div>
+
+                {/* Submit */}
+                <button
+                  type="submit"
+                  disabled={!stripe || submitting}
+                  className="w-full py-4 rounded-xl bg-[#E0232C] hover:bg-[#C51E26] text-white font-bold text-base tracking-wide transition shadow-sm disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                >
+                  {submitting ? (
+                    <>
+                      <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                      </svg>
+                      Processing…
+                    </>
+                  ) : (
+                    <>
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                      </svg>
+                      Pay ${total} and Get Your Policy
+                    </>
+                  )}
+                </button>
+
+                <p className="text-center text-xs text-[#797979]">
+                  By completing this purchase you agree to our{' '}
+                  <a href="/terms" target="_blank" className="text-[#1CA0DF] underline">Terms &amp; Conditions</a>.
+                </p>
+              </div>
             </div>
           </form>
         </div>
       </div>
+
     </QuoteLayout>
   )
 }
 
-// ─── Page wrapper — provides <Elements> context ───────────────────────────────
+// ─── Page wrapper ─────────────────────────────────────────────────────────────
 
 export default function QuotePaymentPage() {
   return (

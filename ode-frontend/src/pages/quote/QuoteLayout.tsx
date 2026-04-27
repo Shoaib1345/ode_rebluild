@@ -1,65 +1,84 @@
 import { Link } from 'react-router-dom'
 
-const STEPS = [
-  { label: 'Event Type',  path: '/onedayevent' },
-  { label: 'Details',     path: '/quote/details' },
-  { label: 'Plans',       path: '/quote/plans' },
-  { label: 'Your Info',   path: '/quote/info' },
-  { label: 'Payment',     path: '/quote/payment' },
-]
+const TOTAL_STEPS = 10
 
 interface Props {
-  step: 1 | 2 | 3 | 4 | 5
+  /** Overall wizard step: 8 = Plans, 9 = Your Info, 10 = Payment */
+  step: 8 | 9 | 10
   children: React.ReactNode
+  /** Widen the content column — used by Plans page which shows 4 cards */
+  wide?: boolean
 }
 
-export default function QuoteLayout({ step, children }: Props) {
+export default function QuoteLayout({ step, children, wide = false }: Props) {
   return (
-    <div className="min-h-screen bg-[#EBEFF2] flex flex-col">
+    <div className="min-h-screen bg-white flex flex-col">
 
-      {/* ── Header ───────────────────────────────────────────────────── */}
-      <header className="bg-[#105778] shadow-sm">
-        <div className="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
-          <Link to="/" className="text-xl font-bold text-white tracking-tight">
-            OneDayEvent
-          </Link>
-          <span className="text-sm text-white/70">
-            Step {step} of {STEPS.length}
-          </span>
-        </div>
+      {/* ── Header ──────────────────────────────────────────────────────── */}
+      <header
+        className="flex items-center justify-between px-5 sm:px-10"
+        style={{ height: 65, marginTop: 30, marginBottom: 30, flexShrink: 0 }}
+      >
+        <Link to="/" className="flex-shrink-0">
+          <img
+            src="/assets/images/logo-img.svg"
+            alt="One Day Event"
+            style={{ height: 62, width: 'auto' }}
+          />
+        </Link>
+
+        <a
+          href="tel:8886390093"
+          style={{
+            display: 'inline-block',
+            lineHeight: '38px',
+            width: 110,
+            textAlign: 'center',
+            borderRadius: 40,
+            border: '1px solid #105778',
+            color: '#105778',
+            fontSize: 14,
+            fontWeight: 600,
+            textDecoration: 'none',
+            flexShrink: 0,
+          }}
+        >
+          (888) 639-0093
+        </a>
       </header>
 
-      {/* ── Progress Bar ─────────────────────────────────────────────── */}
-      <div className="bg-white border-b border-[#E3E3E3]">
-        <div className="max-w-4xl mx-auto px-4">
-          <div className="flex">
-            {STEPS.map((s, i) => {
-              const num    = i + 1
-              const active = num === step
-              const done   = num < step
-              return (
-                <div
-                  key={s.label}
-                  className={`flex-1 py-3 text-center text-xs font-medium border-b-2 transition-colors ${
-                    active
-                      ? 'border-[#1CA0DF] text-[#1CA0DF]'
-                      : done
-                        ? 'border-[#1CA0DF]/40 text-[#1CA0DF]/60'
-                        : 'border-transparent text-[#797979]'
-                  }`}
-                >
-                  <span className="hidden sm:inline">{s.label}</span>
-                  <span className="sm:hidden">{num}</span>
-                </div>
-              )
-            })}
-          </div>
+      {/* ── Progress bar ─────────────────────────────────────────────────── */}
+      <div className="px-5 sm:px-10" style={{ marginBottom: 40, flexShrink: 0 }}>
+        <div
+          style={{
+            background: 'rgba(28,160,221,0.1)',
+            height: 18,
+            borderRadius: 40,
+            display: 'flex',
+            alignItems: 'center',
+            padding: '0 9px',
+            gap: 8,
+          }}
+        >
+          {Array.from({ length: TOTAL_STEPS }, (_, i) => (
+            <div
+              key={i}
+              style={{
+                flex: 1,
+                height: 4,
+                borderRadius: 40,
+                background: '#1087c3',
+                opacity: i + 1 <= step ? 1 : 0.1,
+                transition: 'opacity 0.3s ease',
+              }}
+            />
+          ))}
         </div>
       </div>
 
-      {/* ── Content ──────────────────────────────────────────────────── */}
-      <main className="flex-1 flex items-start justify-center px-4 py-10">
-        <div className="w-full max-w-lg">
+      {/* ── Content ──────────────────────────────────────────────────────── */}
+      <main className="flex-1 px-4 sm:px-6 pb-16">
+        <div className={`mx-auto w-full ${wide ? 'max-w-5xl' : 'max-w-2xl'}`}>
           {children}
         </div>
       </main>

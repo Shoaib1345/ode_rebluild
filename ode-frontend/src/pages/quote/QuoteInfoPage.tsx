@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -13,13 +13,11 @@ import QuoteLayout from './QuoteLayout'
 // ─── Schema ───────────────────────────────────────────────────────────────────
 
 const schema = z.object({
-  // Personal / contact
   first_name:  z.string().min(1, 'Required'),
   last_name:   z.string().min(1, 'Required'),
   email:       z.string().min(1, 'Required').email('Enter a valid email'),
   phone:       z.string().min(7, 'Enter a valid phone number'),
 
-  // Insured address (who is on the policy)
   ins_first_name: z.string().min(1, 'Required'),
   ins_last_name:  z.string().min(1, 'Required'),
   ins_street:     z.string().min(1, 'Required'),
@@ -27,7 +25,6 @@ const schema = z.object({
   ins_state:      z.string().min(1, 'Select a state'),
   ins_zip:        z.string().regex(/^\d{5}$/, 'Enter a 5-digit zip'),
 
-  // Event / venue
   event_name:           z.string().min(1, 'Required'),
   venue_name:           z.string().min(1, 'Required'),
   venue_address:        z.string().min(1, 'Required'),
@@ -38,7 +35,6 @@ const schema = z.object({
   venue_contact_email:  z.string().email('Enter a valid email').or(z.literal('')).optional(),
   venue_contact_number: z.string().optional(),
 
-  // Acknowledge
   acknowledge: z.literal(true, { error: 'You must accept the terms' }),
 })
 
@@ -53,14 +49,40 @@ async function fetchStates(): Promise<UsState[]> {
 
 function FieldError({ msg }: { msg?: string }) {
   if (!msg) return null
-  return <p className="mt-1 text-xs text-red-600">{msg}</p>
+  return (
+    <p className="mt-1.5 text-xs text-[#E0232C] flex items-center gap-1">
+      <svg className="w-3 h-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+      </svg>
+      {msg}
+    </p>
+  )
 }
 
-function SectionTitle({ children }: { children: React.ReactNode }) {
+function SectionCard({
+  num,
+  title,
+  subtitle,
+  children,
+}: {
+  num: number
+  title: string
+  subtitle?: string
+  children: React.ReactNode
+}) {
   return (
-    <h2 className="text-base font-semibold text-gray-700 mb-4 pb-2 border-b border-gray-100">
-      {children}
-    </h2>
+    <div className="bg-white rounded-2xl shadow-[0px_4px_12px_rgba(55,106,136,0.08)] overflow-hidden">
+      <div className="flex items-start gap-3 px-6 py-4 bg-[#EDF0FA] border-b border-[#E3E3E3]/70">
+        <span className="flex-shrink-0 w-7 h-7 rounded-full bg-[#1CA0DF] text-white text-xs font-bold flex items-center justify-center mt-0.5">
+          {num}
+        </span>
+        <div>
+          <h2 className="text-[15px] font-bold text-[#262D45]">{title}</h2>
+          {subtitle && <p className="text-xs text-[#797979] mt-0.5">{subtitle}</p>}
+        </div>
+      </div>
+      <div className="px-6 py-6">{children}</div>
+    </div>
   )
 }
 
@@ -68,39 +90,46 @@ function Field({
   label,
   required,
   error,
+  hint,
   children,
 }: {
   label: string
   required?: boolean
   error?: string
+  hint?: string
   children: React.ReactNode
 }) {
   return (
     <div>
-      <label className="block text-sm text-gray-600 mb-1">
-        {label}{required && <span className="text-red-500 ml-0.5">*</span>}
+      <label className="block text-xs font-semibold text-[#262D45] mb-1.5">
+        {label}{required && <span className="text-[#E0232C] ml-0.5">*</span>}
       </label>
       {children}
+      {hint && !error && <p className="mt-1 text-xs text-[#797979]">{hint}</p>}
       <FieldError msg={error} />
     </div>
   )
 }
 
 const inputCls = (err?: string) =>
-  `w-full rounded-lg border px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#1CA0DF] ${
-    err ? 'border-red-400' : 'border-gray-300'
+  `w-full rounded-xl border px-4 py-2.5 text-sm text-[#262D45] placeholder-gray-400 focus:outline-none focus:ring-2 transition ${
+    err
+      ? 'border-[#E0232C] bg-red-50 focus:ring-red-200 focus:border-[#E0232C]'
+      : 'border-[#E3E3E3] bg-white focus:ring-[#1CA0DF]/20 focus:border-[#1CA0DF]'
   }`
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function QuoteInfoPage() {
-  const navigate       = useNavigate()
-  const selectedPlan   = useQuoteStore((s) => s.selectedPlan)
-  const params         = useQuoteStore((s) => s.params)
-  const setCustomerInfo = useQuoteStore((s) => s.setCustomerInfo)
-  const sigRef         = useRef<SignatureCanvas>(null)
+  const navigate          = useNavigate()
+  const selectedPlan      = useQuoteStore((s) => s.selectedPlan)
+  const params            = useQuoteStore((s) => s.params)
+  const plans             = useQuoteStore((s) => s.plans)
+  const pendingQuoteId    = useQuoteStore((s) => s.pendingQuoteId)
+  const setPendingQuoteId = useQuoteStore((s) => s.setPendingQuoteId)
+  const setCustomerInfo   = useQuoteStore((s) => s.setCustomerInfo)
+  const sigRef            = useRef<SignatureCanvas>(null)
 
-  // Guard
   useEffect(() => {
     if (!selectedPlan) navigate('/quote/plans', { replace: true })
   }, [selectedPlan, navigate])
@@ -115,17 +144,36 @@ export default function QuoteInfoPage() {
     register,
     handleSubmit,
     setValue,
+    getValues,
     formState: { errors, isSubmitting },
   } = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: {
-      // Pre-fill state from quote params
       ins_state:   params.event_state ?? '',
       venue_state: params.event_state ?? '',
     },
   })
 
-  // Same-as-contact checkbox pre-fill
+  const autoSave = useCallback(async (email: string) => {
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return
+    try {
+      const currentState = { params, plans, selectedPlan, customerInfo: getValues() }
+      const payload: Record<string, unknown> = {
+        email,
+        current_route: '/quote/info',
+        wizard_state:  currentState,
+      }
+      if (pendingQuoteId) payload.pending_quote_id = pendingQuoteId
+      const { data } = await api.post<{ pending_quote_id: string; created: boolean }>(
+        '/leads/pending',
+        payload
+      )
+      if (data.pending_quote_id) setPendingQuoteId(data.pending_quote_id)
+    } catch {
+      // best-effort
+    }
+  }, [params, plans, selectedPlan, pendingQuoteId, setPendingQuoteId, getValues])
+
   const fillInsuredFromContact = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.checked) return
     const el = (name: string) =>
@@ -135,11 +183,9 @@ export default function QuoteInfoPage() {
   }
 
   const onSubmit = (data: FormData) => {
-    // Capture signature as base64 PNG
     const sigData = sigRef.current && !sigRef.current.isEmpty()
       ? sigRef.current.toDataURL('image/png')
       : ''
-
     setCustomerInfo({ ...data, signature: sigData })
     navigate('/quote/payment')
   }
@@ -149,135 +195,146 @@ export default function QuoteInfoPage() {
     : '0.00'
 
   return (
-    <QuoteLayout step={4}>
-      {/* Back + plan summary */}
-      <div className="mb-5 flex items-center justify-between">
+    <QuoteLayout step={9}>
+
+      {/* ── Back + plan summary pill ─────────────────────────────────── */}
+      <div className="mb-5 flex items-center justify-between flex-wrap gap-3">
         <button
           type="button"
           onClick={() => navigate('/quote/plans')}
-          className="text-[#1CA0DF] hover:text-[#105778] text-sm font-medium"
+          className="inline-flex items-center gap-1 text-sm text-[#1CA0DF] hover:text-[#105778] font-medium transition"
         >
-          ← Back
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+          </svg>
+          Back to Plans
         </button>
+
         {selectedPlan && (
-          <span className="text-sm bg-white border border-gray-200 rounded-lg px-3 py-1.5 shadow-sm text-gray-700">
-            {selectedPlan.min_limit}M / {selectedPlan.max_limit}M &nbsp;·&nbsp;
-            <span className="font-semibold text-[#105778]">${total}</span>
-          </span>
+          <div className="flex items-center gap-2 bg-white border border-[#E3E3E3] rounded-xl px-4 py-2 shadow-sm">
+            <div className="w-2 h-2 rounded-full bg-[#1CA0DF]" />
+            <span className="text-sm text-[#505458]">
+              ${selectedPlan.min_limit}M / ${selectedPlan.max_limit}M
+            </span>
+            <span className="text-[#E3E3E3]">·</span>
+            <span className="text-sm font-bold text-[#105778]">${total}</span>
+          </div>
         )}
       </div>
 
-      <form onSubmit={handleSubmit(onSubmit)} noValidate>
-        <div className="bg-white rounded-2xl shadow-md px-8 py-8 space-y-8">
+      <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-4">
 
-          {/* ── 1. Contact Info ─────────────────────────────────────── */}
-          <div>
-            <SectionTitle>Your contact information</SectionTitle>
-            <div className="grid grid-cols-2 gap-4 mb-4">
-              <Field label="First name" required error={errors.first_name?.message}>
-                <input {...register('first_name')} className={inputCls(errors.first_name?.message)} placeholder="Jane" />
-              </Field>
-              <Field label="Last name" required error={errors.last_name?.message}>
-                <input {...register('last_name')} className={inputCls(errors.last_name?.message)} placeholder="Smith" />
-              </Field>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <Field label="Email" required error={errors.email?.message}>
-                <input {...register('email')} type="email" className={inputCls(errors.email?.message)} placeholder="jane@example.com" />
-              </Field>
-              <Field label="Phone" required error={errors.phone?.message}>
-                <input {...register('phone')} type="tel" className={inputCls(errors.phone?.message)} placeholder="(555) 000-0000" />
-              </Field>
-            </div>
+        {/* ── 1. Contact Info ─────────────────────────────────────────── */}
+        <SectionCard num={1} title="Your contact information">
+          <div className="grid grid-cols-2 gap-4 mb-4">
+            <Field label="First name" required error={errors.first_name?.message}>
+              <input {...register('first_name')} className={inputCls(errors.first_name?.message)} placeholder="Jane" />
+            </Field>
+            <Field label="Last name" required error={errors.last_name?.message}>
+              <input {...register('last_name')} className={inputCls(errors.last_name?.message)} placeholder="Smith" />
+            </Field>
           </div>
-
-          {/* ── 2. Named Insured ────────────────────────────────────── */}
-          <div>
-            <SectionTitle>Named insured (who is covered)</SectionTitle>
-            <p className="text-xs text-gray-400 mb-4">
-              This is the person or organization on the policy — usually the event host.
-            </p>
-
-            <label className="flex items-center gap-2 text-sm text-gray-600 mb-4 cursor-pointer">
+          <div className="grid grid-cols-2 gap-4">
+            <Field label="Email" required error={errors.email?.message}>
               <input
-                type="checkbox"
-                onChange={fillInsuredFromContact}
-                className="h-4 w-4 rounded border-gray-300 text-[#1CA0DF]"
+                {...register('email')}
+                type="email"
+                className={inputCls(errors.email?.message)}
+                placeholder="jane@example.com"
+                onBlur={(e) => autoSave(e.target.value)}
               />
-              Same as contact information above
-            </label>
+            </Field>
+            <Field label="Phone" required error={errors.phone?.message}>
+              <input {...register('phone')} type="tel" className={inputCls(errors.phone?.message)} placeholder="(408) 000-0000" />
+            </Field>
+          </div>
+        </SectionCard>
 
-            <div className="grid grid-cols-2 gap-4 mb-4">
-              <Field label="First name" required error={errors.ins_first_name?.message}>
-                <input {...register('ins_first_name')} className={inputCls(errors.ins_first_name?.message)} placeholder="Jane" />
-              </Field>
-              <Field label="Last name" required error={errors.ins_last_name?.message}>
-                <input {...register('ins_last_name')} className={inputCls(errors.ins_last_name?.message)} placeholder="Smith" />
-              </Field>
-            </div>
-            <div className="mb-4">
-              <Field label="Street address" required error={errors.ins_street?.message}>
-                <input {...register('ins_street')} className={inputCls(errors.ins_street?.message)} placeholder="123 Main St" />
-              </Field>
-            </div>
-            <div className="grid grid-cols-3 gap-4">
-              <Field label="City" required error={errors.ins_city?.message}>
-                <input {...register('ins_city')} className={inputCls(errors.ins_city?.message)} placeholder="Los Angeles" />
-              </Field>
-              <Field label="State" required error={errors.ins_state?.message}>
-                <select {...register('ins_state')} className={inputCls(errors.ins_state?.message)}>
-                  <option value="">State…</option>
-                  {states.map((s) => (
-                    <option key={s.id} value={s.abbreviation}>{s.abbreviation}</option>
-                  ))}
-                </select>
-              </Field>
-              <Field label="Zip" required error={errors.ins_zip?.message}>
-                <input {...register('ins_zip')} className={inputCls(errors.ins_zip?.message)} placeholder="90210" maxLength={5} />
-              </Field>
-            </div>
+        {/* ── 2. Named Insured ────────────────────────────────────────── */}
+        <SectionCard
+          num={2}
+          title="Named insured"
+          subtitle="The person or organization on the policy — usually the event host."
+        >
+          <label className="flex items-center gap-2.5 text-sm text-[#505458] mb-5 cursor-pointer p-3 bg-[#EDF0FA]/60 rounded-xl border border-[#E3E3E3]">
+            <input
+              type="checkbox"
+              onChange={fillInsuredFromContact}
+              className="h-4 w-4 rounded border-gray-300 text-[#1CA0DF]"
+            />
+            Same as contact information above
+          </label>
+
+          <div className="grid grid-cols-2 gap-4 mb-4">
+            <Field label="First name" required error={errors.ins_first_name?.message}>
+              <input {...register('ins_first_name')} className={inputCls(errors.ins_first_name?.message)} placeholder="Jane" />
+            </Field>
+            <Field label="Last name" required error={errors.ins_last_name?.message}>
+              <input {...register('ins_last_name')} className={inputCls(errors.ins_last_name?.message)} placeholder="Smith" />
+            </Field>
+          </div>
+          <div className="mb-4">
+            <Field label="Street address" required error={errors.ins_street?.message}>
+              <input {...register('ins_street')} className={inputCls(errors.ins_street?.message)} placeholder="123 Main St" />
+            </Field>
+          </div>
+          <div className="grid grid-cols-3 gap-4">
+            <Field label="City" required error={errors.ins_city?.message}>
+              <input {...register('ins_city')} className={inputCls(errors.ins_city?.message)} placeholder="Los Angeles" />
+            </Field>
+            <Field label="State" required error={errors.ins_state?.message}>
+              <select {...register('ins_state')} className={inputCls(errors.ins_state?.message)}>
+                <option value="">State…</option>
+                {states.map((s) => (
+                  <option key={s.id} value={s.abbreviation}>{s.abbreviation}</option>
+                ))}
+              </select>
+            </Field>
+            <Field label="ZIP" required error={errors.ins_zip?.message}>
+              <input {...register('ins_zip')} className={inputCls(errors.ins_zip?.message)} placeholder="90210" maxLength={5} />
+            </Field>
+          </div>
+        </SectionCard>
+
+        {/* ── 3. Event & Venue ────────────────────────────────────────── */}
+        <SectionCard num={3} title="Event & venue details">
+          <div className="grid grid-cols-2 gap-4 mb-4">
+            <Field label="Event name" required error={errors.event_name?.message}>
+              <input {...register('event_name')} className={inputCls(errors.event_name?.message)} placeholder="Jane's Birthday Party" />
+            </Field>
+            <Field label="Venue name" required error={errors.venue_name?.message}>
+              <input {...register('venue_name')} className={inputCls(errors.venue_name?.message)} placeholder="The Grand Ballroom" />
+            </Field>
           </div>
 
-          {/* ── 3. Event & Venue ────────────────────────────────────── */}
-          <div>
-            <SectionTitle>Event & venue details</SectionTitle>
+          <div className="mb-4">
+            <Field label="Venue street address" required error={errors.venue_address?.message}>
+              <input {...register('venue_address')} className={inputCls(errors.venue_address?.message)} placeholder="456 Venue Ave" />
+            </Field>
+          </div>
 
-            <div className="grid grid-cols-2 gap-4 mb-4">
-              <Field label="Event name" required error={errors.event_name?.message}>
-                <input {...register('event_name')} className={inputCls(errors.event_name?.message)} placeholder="Jane's Birthday Party" />
-              </Field>
-              <Field label="Venue name" required error={errors.venue_name?.message}>
-                <input {...register('venue_name')} className={inputCls(errors.venue_name?.message)} placeholder="The Grand Ballroom" />
-              </Field>
-            </div>
+          <div className="grid grid-cols-3 gap-4 mb-5">
+            <Field label="City" required error={errors.venue_city?.message}>
+              <input {...register('venue_city')} className={inputCls(errors.venue_city?.message)} placeholder="Los Angeles" />
+            </Field>
+            <Field label="State" required error={errors.venue_state?.message}>
+              <select {...register('venue_state')} className={inputCls(errors.venue_state?.message)}>
+                <option value="">State…</option>
+                {states.map((s) => (
+                  <option key={s.id} value={s.abbreviation}>{s.abbreviation}</option>
+                ))}
+              </select>
+            </Field>
+            <Field label="ZIP" required error={errors.venue_zip?.message}>
+              <input {...register('venue_zip')} className={inputCls(errors.venue_zip?.message)} placeholder="90210" maxLength={5} />
+            </Field>
+          </div>
 
-            <div className="mb-4">
-              <Field label="Venue street address" required error={errors.venue_address?.message}>
-                <input {...register('venue_address')} className={inputCls(errors.venue_address?.message)} placeholder="456 Venue Ave" />
-              </Field>
-            </div>
-
-            <div className="grid grid-cols-3 gap-4 mb-4">
-              <Field label="City" required error={errors.venue_city?.message}>
-                <input {...register('venue_city')} className={inputCls(errors.venue_city?.message)} placeholder="Los Angeles" />
-              </Field>
-              <Field label="State" required error={errors.venue_state?.message}>
-                <select {...register('venue_state')} className={inputCls(errors.venue_state?.message)}>
-                  <option value="">State…</option>
-                  {states.map((s) => (
-                    <option key={s.id} value={s.abbreviation}>{s.abbreviation}</option>
-                  ))}
-                </select>
-              </Field>
-              <Field label="Zip" required error={errors.venue_zip?.message}>
-                <input {...register('venue_zip')} className={inputCls(errors.venue_zip?.message)} placeholder="90210" maxLength={5} />
-              </Field>
-            </div>
-
-            <p className="text-xs text-gray-400 mb-3">
-              Venue contact details are optional — if provided, we'll send the certificate directly to them.
+          <div className="pt-4 border-t border-[#E3E3E3]">
+            <p className="text-xs font-semibold text-[#262D45] mb-3">
+              Venue contact{' '}
+              <span className="text-[#797979] font-normal">(optional — if provided, we'll send the COI directly to them)</span>
             </p>
-
             <div className="grid grid-cols-3 gap-4">
               <Field label="Contact name" error={errors.venue_contact_person?.message}>
                 <input {...register('venue_contact_person')} className={inputCls()} placeholder="Optional" />
@@ -290,62 +347,61 @@ export default function QuoteInfoPage() {
               </Field>
             </div>
           </div>
+        </SectionCard>
 
-          {/* ── 4. Signature ────────────────────────────────────────── */}
-          <div>
-            <SectionTitle>Signature</SectionTitle>
-            <p className="text-xs text-gray-400 mb-3">
-              By signing below you confirm the information is accurate and agree to the policy terms.
-            </p>
-            <div className="rounded-xl border-2 border-dashed border-gray-300 bg-gray-50 overflow-hidden">
-              <SignatureCanvas
-                ref={sigRef}
-                penColor="#1e3a8a"
-                canvasProps={{
-                  className: 'w-full',
-                  style: { height: 140, width: '100%' },
-                }}
-              />
-            </div>
-            <button
-              type="button"
-              onClick={() => sigRef.current?.clear()}
-              className="mt-1 text-xs text-gray-400 hover:text-red-500 transition-colors"
-            >
-              Clear signature
-            </button>
+        {/* ── 4. Signature ────────────────────────────────────────────── */}
+        <SectionCard
+          num={4}
+          title="Signature"
+          subtitle="By signing you confirm the information is accurate and agree to the policy terms."
+        >
+          <div className="rounded-xl border-2 border-dashed border-[#E3E3E3] bg-[#FAFAFA] overflow-hidden">
+            <SignatureCanvas
+              ref={sigRef}
+              penColor="#105778"
+              canvasProps={{
+                className: 'w-full',
+                style: { height: 140, width: '100%' },
+              }}
+            />
           </div>
-
-          {/* ── 5. Acknowledge ──────────────────────────────────────── */}
-          <div>
-            <label className="flex items-start gap-3 cursor-pointer">
-              <input
-                type="checkbox"
-                {...register('acknowledge')}
-                className="mt-0.5 h-4 w-4 rounded border-gray-300 text-[#1CA0DF] focus:ring-[#1CA0DF]"
-              />
-              <span className="text-sm text-gray-600 leading-relaxed">
-                I acknowledge that the event details provided are accurate, that I have read and
-                agree to the{' '}
-                <a href="/terms" target="_blank" className="text-[#1CA0DF] underline">
-                  Terms &amp; Conditions
-                </a>
-                , and that I am authorized to purchase this policy.
-              </span>
-            </label>
-            <FieldError msg={errors.acknowledge?.message} />
-          </div>
-
-          {/* ── Submit ──────────────────────────────────────────────── */}
           <button
-            type="submit"
-            disabled={isSubmitting}
-            className="w-full py-3 rounded-lg bg-[#1CA0DF] hover:bg-[#1786BB] text-white font-semibold text-sm transition-colors disabled:opacity-40"
+            type="button"
+            onClick={() => sigRef.current?.clear()}
+            className="mt-1.5 text-xs text-[#797979] hover:text-[#E0232C] transition-colors"
           >
-            Continue to Payment →
+            Clear signature
           </button>
+        </SectionCard>
 
+        {/* ── 5. Acknowledgement ──────────────────────────────────────── */}
+        <div className="bg-white rounded-2xl shadow-[0px_4px_12px_rgba(55,106,136,0.08)] px-6 py-5">
+          <label className="flex items-start gap-3 cursor-pointer">
+            <input
+              type="checkbox"
+              {...register('acknowledge')}
+              className="mt-0.5 h-4 w-4 rounded border-gray-300 text-[#1CA0DF] focus:ring-[#1CA0DF] flex-shrink-0"
+            />
+            <span className="text-sm text-[#505458] leading-relaxed">
+              I acknowledge that the event details provided are accurate, that I have read and agree to the{' '}
+              <a href="/terms" target="_blank" className="text-[#1CA0DF] underline font-medium">
+                Terms &amp; Conditions
+              </a>
+              , and that I am authorized to purchase this policy.
+            </span>
+          </label>
+          <FieldError msg={errors.acknowledge?.message} />
         </div>
+
+        {/* ── Submit ──────────────────────────────────────────────────── */}
+        <button
+          type="submit"
+          disabled={isSubmitting}
+          className="w-full py-4 rounded-2xl bg-[#E0232C] hover:bg-[#C51E26] text-white font-bold text-base tracking-wide transition shadow-sm disabled:opacity-40 disabled:cursor-not-allowed"
+        >
+          {isSubmitting ? 'Saving…' : 'Continue to Payment →'}
+        </button>
+
       </form>
     </QuoteLayout>
   )

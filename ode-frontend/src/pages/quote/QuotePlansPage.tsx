@@ -13,31 +13,16 @@ async function fetchQuote(params: Record<string, unknown>): Promise<{ plans: Quo
   return res.data
 }
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
+// ─── Slot config ─────────────────────────────────────────────────────────────
+// Displayed left-to-right: small coverage → RECOMMENDED → higher → highest
 
-const PLAN_LABELS: Record<string, string> = {
-  firstOption:  'Basic',
-  secondOption: 'Standard',
-  thirdOption:  'Enhanced',
-  fourthOption: 'Premium',
-}
+const SLOT_ORDER = ['firstOption', 'secondOption', 'thirdOption', 'fourthOption'] as const
 
-const PLAN_ACCENT: Record<string, string> = {
-  firstOption:  'border-slate-300  bg-slate-50',
-  secondOption: 'border-[#1CA0DF]   bg-[#EDF0FA]',
-  thirdOption:  'border-violet-400 bg-violet-50',
-  fourthOption: 'border-emerald-400 bg-emerald-50',
-}
-
-const PLAN_BADGE: Record<string, string> = {
-  firstOption:  'bg-slate-200  text-slate-700',
-  secondOption: 'bg-[#EDF0FA]   text-[#105778]',
-  thirdOption:  'bg-violet-100 text-violet-800',
-  fourthOption: 'bg-emerald-100 text-emerald-800',
-}
-
-function fmt(n: number): string {
-  return `$${n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+const SLOT_COLOR: Record<string, string> = {
+  firstOption:  '#1CA0DF',   // blue
+  secondOption: '#E0232C',   // red (recommended)
+  thirdOption:  '#28A745',   // green
+  fourthOption: '#1a237e',   // dark navy
 }
 
 // ─── Plan Card ────────────────────────────────────────────────────────────────
@@ -51,95 +36,171 @@ function PlanCard({
   plan: QuotePlan
   onSelect: (plan: QuotePlan) => void
 }) {
-  const label     = PLAN_LABELS[slot]  ?? 'Plan'
-  const accent    = PLAN_ACCENT[slot]  ?? 'border-gray-300 bg-gray-50'
-  const badge     = PLAN_BADGE[slot]   ?? 'bg-gray-100 text-gray-700'
-  const total     = plan.total + (plan.extra_charge ?? 0)
+  const color  = plan.recommended ? '#E0232C' : (SLOT_COLOR[slot] ?? '#1CA0DF')
+  const total  = plan.total + (plan.extra_charge ?? 0)
+  const price  = Math.round(total)          // integer, no dollar sign
+  const isRec  = plan.recommended
 
   return (
-    <div
-      className={`relative flex flex-col rounded-2xl border-2 shadow-sm transition-all hover:shadow-md ${accent} ${
-        plan.recommended ? 'ring-2 ring-[#1CA0DF] ring-offset-2' : ''
-      }`}
-    >
-      {/* Recommended badge */}
-      {plan.recommended && (
-        <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-          <span className="rounded-full bg-[#1CA0DF] px-3 py-0.5 text-xs font-semibold text-white shadow">
-            ★ Recommended
+    // Outer wrapper — extra top padding on non-recommended cards to
+    // leave room for the RECOMMENDED badge (which floats above the rec card)
+    <div style={{ position: 'relative', paddingTop: isRec ? 0 : 32 }}>
+
+      {/* ── RECOMMENDED badge ────────────────────────────────────────── */}
+      {isRec && (
+        <div style={{ textAlign: 'center', marginBottom: 8 }}>
+          <span
+            style={{
+              display: 'inline-block',
+              backgroundColor: '#E0232C',
+              color: '#fff',
+              fontSize: 11,
+              fontWeight: 800,
+              letterSpacing: '1.5px',
+              textTransform: 'uppercase',
+              padding: '6px 20px',
+              borderRadius: 20,
+            }}
+          >
+            RECOMMENDED
           </span>
         </div>
       )}
 
-      <div className="flex flex-col flex-1 p-6 pt-8">
-        {/* Label + limits */}
-        <div className="mb-4">
-          <span className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-semibold mb-2 ${badge}`}>
-            {label}
-          </span>
-          <div className="text-lg font-bold text-gray-800">
-            ${plan.min_limit}M / ${plan.max_limit}M
+      {/* ── Card ─────────────────────────────────────────────────────── */}
+      <div
+        style={{
+          borderRadius: 14,
+          overflow: 'hidden',
+          background: '#fff',
+          border: isRec ? '2px solid #E0232C' : '1px solid #E3E3E3',
+          boxShadow: isRec
+            ? '0 10px 32px rgba(224,35,44,0.22)'
+            : '0 2px 10px rgba(0,0,0,0.08)',
+        }}
+      >
+        {/* "BEST PLAN" label (recommended card only) */}
+        {isRec && (
+          <div
+            style={{
+              textAlign: 'center',
+              padding: '12px 16px 8px',
+              color: '#E0232C',
+              fontSize: 14,
+              fontWeight: 900,
+              letterSpacing: '0.5px',
+              textDecoration: 'underline',
+            }}
+          >
+            BEST PLAN
           </div>
-          <div className="text-xs text-gray-400 mt-0.5">
-            Per-occurrence / Aggregate
-          </div>
-        </div>
-
-        {/* GL limits */}
-        {plan.limits.length > 0 && (
-          <ul className="mb-4 space-y-1.5 text-xs text-gray-600">
-            {plan.limits.map((l: PolicyLimit, i: number) => (
-              <li key={i} className="flex justify-between gap-2">
-                <span className="text-gray-500">{l.gl_limit_type}</span>
-                <span className="font-medium text-gray-700 whitespace-nowrap">{l.gl_limit}</span>
-              </li>
-            ))}
-          </ul>
         )}
 
-        {/* Carrier */}
-        <div className="mt-auto mb-4 text-xs text-gray-400">
-          Carrier: <span className="font-medium text-gray-600">{plan.carrier}</span>
-        </div>
-
-        {/* Price breakdown */}
-        <div className="rounded-lg bg-white border border-gray-100 p-3 mb-4 text-xs space-y-1">
-          <div className="flex justify-between text-gray-500">
-            <span>Premium</span>
-            <span>{fmt(plan.premium)}</span>
-          </div>
-          <div className="flex justify-between text-gray-500">
-            <span>Broker fee</span>
-            <span>{fmt(plan.broker_fee)}</span>
-          </div>
-          <div className="flex justify-between text-gray-500">
-            <span>Processing fee</span>
-            <span>{fmt(plan.processing_fee)}</span>
-          </div>
-          {(plan.extra_charge ?? 0) > 0 && (
-            <div className="flex justify-between text-gray-500">
-              <span>Private residence</span>
-              <span>{fmt(plan.extra_charge)}</span>
-            </div>
-          )}
-          <div className="flex justify-between font-semibold text-gray-800 border-t border-gray-100 pt-1 mt-1">
-            <span>Total</span>
-            <span>{fmt(total)}</span>
-          </div>
-        </div>
-
-        {/* CTA */}
-        <button
-          type="button"
-          onClick={() => onSelect(plan)}
-          className={`w-full rounded-xl py-3 text-sm font-semibold transition-colors ${
-            plan.recommended
-              ? 'bg-[#1CA0DF] hover:bg-[#1786BB] text-white'
-              : 'bg-white hover:bg-gray-50 border border-gray-300 text-gray-700 hover:border-gray-400'
-          }`}
+        {/* ── Colored header band ──────────────────────────────────── */}
+        <div
+          style={{
+            backgroundColor: color,
+            padding: '14px 16px',
+            textAlign: 'center',
+          }}
         >
-          Select Plan
-        </button>
+          <p
+            style={{
+              color: '#fff',
+              fontWeight: 800,
+              fontSize: 16,
+              lineHeight: '22px',
+            }}
+          >
+            {plan.min_limit} Million / {plan.max_limit} Million
+          </p>
+        </div>
+
+        {/* ── Coverage detail rows ─────────────────────────────────── */}
+        <div style={{ padding: '12px 18px 8px' }}>
+          {plan.limits.length > 0
+            ? plan.limits.map((l: PolicyLimit, i: number) => (
+                <div
+                  key={i}
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    padding: '5px 0',
+                    borderBottom: i < plan.limits.length - 1 ? '1px solid #F3F3F3' : 'none',
+                    fontSize: 13,
+                  }}
+                >
+                  <span style={{ color: '#505458' }}>{l.gl_limit_type}:</span>
+                  <span style={{ color: '#505458', fontWeight: 600 }}>{l.gl_limit}</span>
+                </div>
+              ))
+            : (
+              // Fallback when limits array is empty
+              <>
+                {[
+                  { label: 'Per Occurrence', value: `$${plan.min_limit} million` },
+                  { label: 'Aggregate',      value: `$${plan.max_limit} million` },
+                ].map((row, i) => (
+                  <div
+                    key={i}
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      padding: '5px 0',
+                      fontSize: 13,
+                      borderBottom: '1px solid #F3F3F3',
+                    }}
+                  >
+                    <span style={{ color: '#505458' }}>{row.label}:</span>
+                    <span style={{ color: '#505458', fontWeight: 600 }}>{row.value}</span>
+                  </div>
+                ))}
+              </>
+            )
+          }
+        </div>
+
+        {/* ── Price box ────────────────────────────────────────────── */}
+        <div style={{ padding: '0 14px 14px' }}>
+          <div
+            style={{
+              backgroundColor: color,
+              borderRadius: 10,
+              padding: '12px 16px',
+              textAlign: 'center',
+            }}
+          >
+            <p style={{ color: '#fff', fontSize: 12, fontWeight: 700, textTransform: 'uppercase', marginBottom: 4, letterSpacing: '1px' }}>
+              PRICE
+            </p>
+            <p style={{ color: '#fff', fontSize: 40, fontWeight: 900, lineHeight: 1 }}>
+              {price}
+            </p>
+          </div>
+        </div>
+
+        {/* ── Buy Now button ───────────────────────────────────────── */}
+        <div style={{ padding: '0 14px 18px' }}>
+          <button
+            type="button"
+            onClick={() => onSelect(plan)}
+            style={{
+              width: '100%',
+              height: 42,
+              borderRadius: 40,
+              border: isRec ? 'none' : '1px solid #CCCCCC',
+              backgroundColor: isRec ? '#E0232C' : 'transparent',
+              color: isRec ? '#fff' : '#505458',
+              fontWeight: 700,
+              fontSize: 14,
+              cursor: 'pointer',
+              transition: 'background-color 0.15s',
+            }}
+          >
+            Buy Now
+          </button>
+        </div>
       </div>
     </div>
   )
@@ -147,167 +208,208 @@ function PlanCard({
 
 // ─── Loading skeleton ─────────────────────────────────────────────────────────
 
-function PlanSkeleton() {
+function PlanSkeleton({ raised }: { raised?: boolean }) {
   return (
-    <div className="rounded-2xl border-2 border-gray-200 bg-gray-50 p-6 animate-pulse">
-      <div className="h-4 w-16 rounded bg-gray-200 mb-3" />
-      <div className="h-6 w-28 rounded bg-gray-200 mb-2" />
-      <div className="h-3 w-20 rounded bg-gray-200 mb-6" />
-      <div className="space-y-2 mb-6">
-        {[1, 2, 3].map((i) => (
-          <div key={i} className="flex justify-between">
-            <div className="h-3 w-28 rounded bg-gray-200" />
-            <div className="h-3 w-16 rounded bg-gray-200" />
-          </div>
-        ))}
+    <div style={{ paddingTop: raised ? 0 : 32 }}>
+      <div
+        className="animate-pulse"
+        style={{
+          borderRadius: 14,
+          overflow: 'hidden',
+          border: '1px solid #E3E3E3',
+          background: '#fff',
+        }}
+      >
+        <div style={{ height: 48, backgroundColor: '#E5E7EB' }} />
+        <div style={{ padding: '12px 18px' }}>
+          {[1, 2, 3, 4, 5].map((i) => (
+            <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '5px 0' }}>
+              <div style={{ height: 12, width: '45%', backgroundColor: '#F3F4F6', borderRadius: 4 }} />
+              <div style={{ height: 12, width: '30%', backgroundColor: '#F3F4F6', borderRadius: 4 }} />
+            </div>
+          ))}
+        </div>
+        <div style={{ margin: '0 14px 14px', height: 76, backgroundColor: '#E5E7EB', borderRadius: 10 }} />
+        <div style={{ margin: '0 14px 18px', height: 42, backgroundColor: '#F3F4F6', borderRadius: 40 }} />
       </div>
-      <div className="h-10 w-full rounded-xl bg-gray-200" />
     </div>
   )
 }
 
-// ─── Main Component ───────────────────────────────────────────────────────────
+// ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function QuotePlansPage() {
-  const navigate      = useNavigate()
-  const params        = useQuoteStore((s) => s.params)
-  const setPlans      = useQuoteStore((s) => s.setPlans)
-  const setSelected   = useQuoteStore((s) => s.setSelectedPlan)
+  const navigate    = useNavigate()
+  const params      = useQuoteStore((s) => s.params)
+  const setPlans    = useQuoteStore((s) => s.setPlans)
+  const setSelected = useQuoteStore((s) => s.setSelectedPlan)
 
-  // Guard — must have event type + dates to be here
   useEffect(() => {
     if (!params.eventType || !params.eventDates) {
       navigate('/onedayevent', { replace: true })
     }
   }, [params.eventType, params.eventDates, navigate])
 
-  // Build API query params from store
   const queryParams = {
-    event_type:           params.eventType,
-    event_state:          params.event_state,
-    persons:              params.number_of_persons,
-    event_dates:          params.eventDates,
-    timezone:             params.timezone ?? Intl.DateTimeFormat().resolvedOptions().timeZone,
-    noha:                 params.noha      ? 1 : 0,
-    w_o_s:                params.w_o_s     ? 1 : 0,
-    p_a_n_c_b:            params.p_a_n_c_b ? 1 : 0,
-    host_liquor:          params.host_liquor ? 1 : 0,
-    liquor:               params.liquor     ? 1 : 0,
-    additional_insureds:  params.additional_insureds ?? 0,
-    private_residence:    params.privateResidence ? 1 : 0,
-    is_venue:             params.isSetVenue  ? 1 : 0,
+    event_type:          params.eventType,
+    event_state:         params.event_state,
+    persons:             params.number_of_persons,
+    event_dates:         params.eventDates,
+    timezone:            params.timezone ?? Intl.DateTimeFormat().resolvedOptions().timeZone,
+    noha:                params.noha       ? 1 : 0,
+    w_o_s:               params.w_o_s      ? 1 : 0,
+    p_a_n_c_b:           params.p_a_n_c_b  ? 1 : 0,
+    host_liquor:         params.host_liquor ? 1 : 0,
+    liquor:              params.liquor      ? 1 : 0,
+    additional_insureds: params.additional_insureds ?? 0,
+    private_residence:   params.privateResidence ? 1 : 0,
+    is_venue:            params.isSetVenue   ? 1 : 0,
   }
 
   const { data, isLoading, isError, refetch } = useQuery({
-    queryKey: ['quote', queryParams],
-    queryFn:  () => fetchQuote(queryParams),
-    enabled:  !!params.eventType && !!params.eventDates,
-    staleTime: Infinity, // don't re-fetch on window focus — params won't change
+    queryKey:  ['quote', queryParams],
+    queryFn:   () => fetchQuote(queryParams),
+    enabled:   !!params.eventType && !!params.eventDates,
+    staleTime: Infinity,
     retry: 1,
   })
 
-  // Persist plans to store whenever we get results
   useEffect(() => {
     if (data?.plans) setPlans(data.plans)
   }, [data, setPlans])
 
-  const plans   = data?.plans
-  const slots   = ['firstOption', 'secondOption', 'thirdOption', 'fourthOption'] as const
-  const visible = plans ? slots.filter((s) => plans[s] !== null) : []
-  const hasAny  = visible.length > 0
+  const plans = data?.plans
+
+  // Show in natural slot order: firstOption → secondOption (rec) → thirdOption → fourthOption
+  const visibleSlots = SLOT_ORDER.filter((s) => plans && plans[s] !== null)
+  const hasAny = visibleSlots.length > 0
+
+  // Which slot index is the recommended one (for skeleton sizing)
+  const recIdx = plans ? visibleSlots.findIndex((s) => plans[s]?.recommended) : 1
 
   function handleSelect(plan: QuotePlan) {
     setSelected(plan)
     navigate('/quote/info')
   }
 
-  // Sort: recommended first, then by total
-  const sortedSlots = [...visible].sort((a, b) => {
-    const pa = plans![a]!
-    const pb = plans![b]!
-    if (pa.recommended && !pb.recommended) return -1
-    if (!pa.recommended && pb.recommended) return 1
-    return pa.total - pb.total
-  })
-
   return (
-    <QuoteLayout step={3}>
-      <div className="mb-5 flex items-center gap-2">
-        <button
-          type="button"
-          onClick={() => navigate('/quote/details')}
-          className="text-[#1CA0DF] hover:text-[#105778] text-sm font-medium"
-        >
-          ← Back
-        </button>
-        {params.eventTypeName && (
-          <span className="text-sm text-gray-500">
-            {params.eventTypeName}
-            {params.event_state ? ` · ${params.event_state}` : ''}
-            {params.eventDates ? ` · ${params.eventDates.split(',')[0]}` : ''}
-          </span>
-        )}
-      </div>
+    <QuoteLayout step={8} wide>
 
-      <h1 className="text-2xl font-bold text-gray-800 mb-2">
-        Select your coverage
+      {/* ── Page title ─────────────────────────────────────────────────── */}
+      <h1
+        style={{
+          textAlign: 'center',
+          fontSize: 26,
+          fontWeight: 900,
+          color: '#262D45',
+          marginBottom: 32,
+        }}
+      >
+        Select your limits of coverage:
       </h1>
-      <p className="text-gray-500 mb-7 text-sm">
-        All plans include General Liability insurance for your event.
-      </p>
 
-      {/* ── Loading ──────────────────────────────────────────────────── */}
+      {/* ── Loading skeletons ─────────────────────────────────────────── */}
       {isLoading && (
-        <div className="grid gap-4 sm:grid-cols-2">
-          {[1, 2, 3, 4].map((i) => <PlanSkeleton key={i} />)}
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(4, 1fr)',
+            gap: 16,
+          }}
+          className="sm:grid-cols-2 lg:grid-cols-4"
+        >
+          {[0, 1, 2, 3].map((i) => (
+            <PlanSkeleton key={i} raised={i === recIdx} />
+          ))}
         </div>
       )}
 
-      {/* ── Error ────────────────────────────────────────────────────── */}
+      {/* ── Error ─────────────────────────────────────────────────────── */}
       {isError && (
-        <div className="rounded-xl bg-red-50 border border-red-200 p-6 text-center">
-          <p className="text-red-700 font-medium mb-2">Could not load plans</p>
-          <p className="text-red-600 text-sm mb-4">
+        <div
+          style={{
+            borderRadius: 16,
+            background: '#FEF2F2',
+            border: '1px solid #FECACA',
+            padding: 32,
+            textAlign: 'center',
+          }}
+        >
+          <p style={{ color: '#B91C1C', fontWeight: 700, fontSize: 17, marginBottom: 8 }}>
+            Could not load plans
+          </p>
+          <p style={{ color: '#DC2626', fontSize: 14, marginBottom: 20 }}>
             Please check your connection and try again.
           </p>
           <button
             type="button"
             onClick={() => refetch()}
-            className="px-4 py-2 rounded-lg bg-red-600 text-white text-sm font-medium hover:bg-red-700"
+            style={{
+              padding: '10px 28px',
+              borderRadius: 10,
+              background: '#DC2626',
+              color: '#fff',
+              fontWeight: 700,
+              fontSize: 14,
+              border: 'none',
+              cursor: 'pointer',
+            }}
           >
-            Retry
+            Try Again
           </button>
         </div>
       )}
 
-      {/* ── No results ───────────────────────────────────────────────── */}
+      {/* ── No results ────────────────────────────────────────────────── */}
       {!isLoading && !isError && plans && !hasAny && (
-        <div className="rounded-xl bg-amber-50 border border-amber-200 p-6 text-center">
-          <p className="text-amber-800 font-semibold mb-2">
+        <div
+          style={{
+            borderRadius: 16,
+            background: '#FFFBEB',
+            border: '1px solid #FDE68A',
+            padding: 32,
+            textAlign: 'center',
+          }}
+        >
+          <p style={{ color: '#92400E', fontWeight: 700, fontSize: 17, marginBottom: 8 }}>
             No online coverage available for these details
           </p>
-          <p className="text-amber-700 text-sm mb-4">
-            Your event may require a manual review. Please call us at{' '}
-            <a href="tel:+18005551234" className="font-semibold underline">
-              1-800-555-1234
-            </a>{' '}
+          <p style={{ color: '#B45309', fontSize: 14, marginBottom: 20 }}>
+            Your event may require manual review. Please call{' '}
+            <a href="tel:+14082176787" style={{ fontWeight: 700 }}>408-217-6787</a>{' '}
             and we'll get you a quote within 1 business day.
           </p>
           <button
             type="button"
-            onClick={() => navigate('/quote/details')}
-            className="px-4 py-2 rounded-lg border border-amber-400 text-amber-800 text-sm font-medium hover:bg-amber-100"
+            onClick={() => navigate('/quote/addons')}
+            style={{
+              padding: '10px 28px',
+              borderRadius: 10,
+              border: '2px solid #F59E0B',
+              color: '#92400E',
+              background: 'transparent',
+              fontWeight: 700,
+              fontSize: 14,
+              cursor: 'pointer',
+            }}
           >
             ← Adjust Details
           </button>
         </div>
       )}
 
-      {/* ── Plans grid ───────────────────────────────────────────────── */}
+      {/* ── Plans grid ────────────────────────────────────────────────── */}
       {!isLoading && hasAny && (
         <>
-          <div className={`grid gap-5 ${sortedSlots.length >= 3 ? 'sm:grid-cols-2 lg:grid-cols-2' : 'sm:grid-cols-2'}`}>
-            {sortedSlots.map((slot) => (
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: `repeat(${visibleSlots.length}, 1fr)`,
+              gap: 16,
+              alignItems: 'start',
+            }}
+          >
+            {visibleSlots.map((slot) => (
               <PlanCard
                 key={slot}
                 slot={slot}
@@ -317,12 +419,32 @@ export default function QuotePlansPage() {
             ))}
           </div>
 
-          <p className="mt-6 text-center text-xs text-gray-400">
-            Prices include broker and processing fees. All plans are subject to
-            carrier underwriting approval.
-          </p>
+          {/* Trust badges */}
+          <div
+            style={{
+              marginTop: 40,
+              display: 'flex',
+              flexWrap: 'wrap',
+              justifyContent: 'center',
+              gap: 24,
+            }}
+          >
+            {[
+              { icon: '🛡️', text: 'A-rated carriers only' },
+              { icon: '⚡', text: 'Certificate issued same day' },
+              { icon: '💳', text: 'All prices include fees & taxes' },
+            ].map(({ icon, text }) => (
+              <span
+                key={text}
+                style={{ fontSize: 13, color: '#797979', display: 'flex', alignItems: 'center', gap: 6 }}
+              >
+                {icon} {text}
+              </span>
+            ))}
+          </div>
         </>
       )}
+
     </QuoteLayout>
   )
 }
