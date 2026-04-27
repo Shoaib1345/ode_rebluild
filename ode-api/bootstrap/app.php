@@ -12,6 +12,10 @@ return Application::configure(basePath: dirname(__DIR__))
         commands: __DIR__.'/../routes/console.php',
         health: '/up',
     )
+    ->withCommands([
+        // Override built-in serve to default --no-reload on Windows
+        \App\Console\Commands\ServeCommand::class,
+    ])
     ->withMiddleware(function (Middleware $middleware): void {
         // Never redirect to a login page — always return null so the
         // AuthenticationException propagates to the JSON exception renderer.
@@ -23,6 +27,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'affiliate' => \App\Http\Middleware\RequireAffiliateAccess::class,
             'customer'  => \App\Http\Middleware\RequireCustomerAccess::class,
             'agent'     => \App\Http\Middleware\RequireAgentAccess::class,
+            'planner'   => \App\Http\Middleware\RequirePlannerAccess::class,
         ]);
 
         // Allow CORS for the React frontend
