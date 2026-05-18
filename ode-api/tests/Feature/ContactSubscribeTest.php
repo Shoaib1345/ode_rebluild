@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Mail;
 use Tests\TestCase;
 
 /**
- * Feature tests for Chunk 40 — Contact Form + Newsletter Subscribe.
+ * Feature tests for Contact Form + Newsletter Subscribe.
  *
  * Covers:
  *   - Contact: store submission, validation

@@ -10,7 +10,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 /**
- * Feature tests for Chunk 37 — Admin Payroll.
+ * Feature tests for Admin Payroll.
  *
  * Covers:
  *   - Access control

@@ -11,7 +11,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 /**
- * Feature tests for Chunk 34 — Agent Portal.
+ * Feature tests for Agent Portal.
  *
  * Covers:
  *   - RequireAgentAccess middleware

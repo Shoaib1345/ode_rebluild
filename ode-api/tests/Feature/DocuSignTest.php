@@ -12,7 +12,7 @@ use Mockery;
 use Tests\TestCase;
 
 /**
- * Feature tests for Chunk 41 — DocuSign Integration.
+ * Feature tests for DocuSign Integration.
  *
  * DocuSignService is mocked so no real DocuSign credentials are needed.
  *

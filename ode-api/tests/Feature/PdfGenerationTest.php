@@ -16,7 +16,7 @@ use Mockery;
 use Tests\TestCase;
 
 /**
- * Feature tests for Chunk 42 — PDF Generation.
+ * Feature tests for PDF Generation.
  *
  * PdfService is mocked so no real DomPDF rendering happens in tests.
  * Storage::fake() captures file writes without touching the real disk.

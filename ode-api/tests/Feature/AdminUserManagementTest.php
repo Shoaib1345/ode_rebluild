@@ -8,7 +8,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 /**
- * Feature tests for Chunk 36 — Admin User Management.
+ * Feature tests for Admin User Management.
  *
  * Covers:
  *   - Index: pagination, role filter, search, status filter

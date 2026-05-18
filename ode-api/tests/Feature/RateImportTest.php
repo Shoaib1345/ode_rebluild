@@ -13,7 +13,7 @@ use Illuminate\Http\UploadedFile;
 use Tests\TestCase;
 
 /**
- * Feature tests for Chunk 43 — Rate Import.
+ * Feature tests for Rate Import.
  *
  * Covers:
  *   - Access control: unauthenticated / non-admin blocked

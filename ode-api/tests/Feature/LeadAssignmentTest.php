@@ -9,7 +9,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 /**
- * Feature tests for Chunk 45 — Admin Lead Assignments.
+ * Feature tests for Admin Lead Assignments.
  *
  * Covers:
  *   - Access control: unauthenticated / non-admin blocked

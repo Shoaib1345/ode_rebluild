@@ -13,7 +13,7 @@ use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 /**
- * Feature tests for Chunk 32 — W9 Upload API + Visibility Gate.
+ * Feature tests for W9 Upload API + Visibility Gate.
  *
  * Covers:
  *   - Upload validation (must be PDF, max 5 MB)

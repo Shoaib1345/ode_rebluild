@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Mail;
 use Tests\TestCase;
 
 /**
- * Feature tests for Chunk 39 — Admin Email Templates CRUD.
+ * Feature tests for Admin Email Templates CRUD.
  *
  * Covers:
  *   - Access control: unauthenticated / non-admin blocked

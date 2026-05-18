@@ -12,7 +12,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 /**
- * Feature tests for Chunk 33 — Customer Portal.
+ * Feature tests for Customer Portal.
  *
  * Covers:
  *   - RequireCustomerAccess middleware enforcement

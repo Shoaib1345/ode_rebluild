@@ -9,7 +9,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 /**
- * Feature tests for Chunk 38 — Admin W9 Management.
+ * Feature tests for Admin W9 Management.
  *
  * Covers:
  *   - Access control: unauthenticated / non-admin blocked

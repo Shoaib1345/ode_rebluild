@@ -11,7 +11,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 /**
- * Feature tests for Chunk 35 — Planner Portal.
+ * Feature tests for Planner Portal.
  *
  * Covers:
  *   - RequirePlannerAccess middleware

@@ -9,7 +9,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 /**
- * Feature tests for Chunk 40 — Admin CMS Pages CRUD.
+ * Feature tests for Admin CMS Pages CRUD.
  *
  * Covers:
  *   - Access control: unauthenticated / non-admin blocked

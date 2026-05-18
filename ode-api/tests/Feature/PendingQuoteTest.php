@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\Mail;
 use Tests\TestCase;
 
 /**
- * Feature tests for Chunk 44 — Pending Quote Save / Resume.
+ * Feature tests for Pending Quote Save / Resume.
  *
  * Covers:
  *   - POST /api/leads/pending  — create, update, validation
