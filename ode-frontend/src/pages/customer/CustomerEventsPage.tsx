@@ -54,7 +54,7 @@ export default function CustomerEventsPage() {
   const handleCOI = async (event: EventRow) => {
     try {
       // Attempt to open the certificate URL — will show the stub message for now.
-      // When Chunk 44 (PDF generation) ships, this will redirect to the real PDF.
+      // Once the PDF generation pipeline is wired up, this will redirect to the real PDF.
       const res = await api.get(event.certificate_url.replace(window.location.origin + '/api', ''))
       toast(res.data?.message ?? 'Certificate requested.', { icon: 'ℹ️' })
     } catch {

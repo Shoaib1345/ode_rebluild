@@ -63,7 +63,7 @@ class PortalController extends Controller
      * Paginated list of the customer's purchased event policies.
      * Scoped to leads where submission_status = 'payment_received'.
      *
-     * COI download URL is a stub — PDF generation is a future chunk.
+     * COI download URL is a stub — wiring to PDF generation is pending.
      */
     public function events(Request $request): JsonResponse
     {
@@ -113,7 +113,7 @@ class PortalController extends Controller
      * GET /api/customer/events/{id}/certificate
      *
      * Certificate of Insurance download stub.
-     * Returns a placeholder response until PDF generation (future chunk) is wired.
+     * Returns a placeholder response until the PDF generation pipeline is wired.
      * Access is restricted to the owning customer.
      */
     public function certificate(Request $request, int $id): JsonResponse
@@ -126,7 +126,7 @@ class PortalController extends Controller
                     ->where('submission_status', 'payment_received')
                     ->firstOrFail();
 
-        // TODO: Replace with real PDF URL when Chunk 44 (PDF generation) is built.
+        // TODO: Replace with real PDF URL once the PDF generation pipeline is wired up.
         return response()->json([
             'message'     => 'Certificate generation is coming soon. Contact support@onedayevent.com for your COI.',
             'lead_id'     => $lead->id,
