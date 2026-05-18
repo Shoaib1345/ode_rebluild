@@ -121,7 +121,12 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/leads',                         [LeadController::class, 'index']);
         Route::get('/leads/{id}',                    [LeadController::class, 'show']);
         Route::patch('/leads/{id}',                  [LeadController::class, 'update']);
+        Route::delete('/leads/{id}',                 [LeadController::class, 'destroy']);
         Route::post('/leads/{id}/notes',             [LeadController::class, 'storeNote']);
+        Route::get('/leads/{id}/files',              [LeadController::class, 'listFiles']);
+        Route::post('/leads/{id}/files',             [LeadController::class, 'storeFile']);
+        Route::post('/leads/{id}/follow-ups',        [LeadController::class, 'storeFollowUp']);
+        Route::post('/leads/{id}/email',             [LeadController::class, 'sendEmail']);
 
         // Blog admin
         Route::get('/blog',           [BlogController::class, 'adminIndex']);
@@ -184,7 +189,8 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/subscribers',          [AdminSubscriberController::class, 'index']);
         Route::delete('/subscribers/{id}',  [AdminSubscriberController::class, 'destroy']);
 
-        // Rate Import
+        // Rate Import + Plan Lookup
+        Route::get('/rates/plans',            [RateImportController::class, 'plans']);
         Route::get('/rates/stats',            [RateImportController::class, 'stats']);
         Route::get('/rates/template',         [RateImportController::class, 'rateTemplate']);
         Route::get('/rates/template/gl',      [RateImportController::class, 'glLimitsTemplate']);

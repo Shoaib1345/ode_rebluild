@@ -40,8 +40,14 @@ export default function LoginPage() {
         navigate(from, { replace: true })
       } else if (level <= 2) {
         navigate('/admin', { replace: true })
+      } else if (level === 5) {
+        navigate('/customer', { replace: true })
       } else if (level === 6) {
         navigate('/affiliate', { replace: true })
+      } else if (level === 7) {
+        navigate('/agent', { replace: true })
+      } else if (level === 8) {
+        navigate('/planner', { replace: true })
       } else {
         navigate('/', { replace: true })
       }

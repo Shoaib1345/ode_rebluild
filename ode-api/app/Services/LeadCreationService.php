@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Jobs\GenerateCoiPdfJob;
 use App\Jobs\SendLeadConfirmationEmail;
 use App\Models\Lead;
 use App\Models\UsState;
@@ -84,17 +85,19 @@ class LeadCreationService
             'referred_by_customer_id'  => $data['referred_by_customer_id']  ?? null,
             // Legacy string-based affiliate tracking (kept for backward compatibility)
             'affiliate_string'         => $data['affiliate_string'] ?? null,
-            'lead_offered_plans'   => json_encode([
+            // Pass as array — the model's 'array' cast handles JSON encoding.
+            // Do NOT pre-encode with json_encode() or it will be double-encoded.
+            'lead_offered_plans'   => [
                 'rate_id'        => $data['rate_id'],
                 'carrier'        => $data['carrier'],
-                'premium'        => $data['premium'],
-                'broker_fee'     => $data['broker_fee'],
-                'processing_fee' => $data['processing_fee'],
-                'extra_charge'   => $data['extra_charge'] ?? 0,
-                'total'          => $data['total'],
-                'min_limit'      => $data['min_limit'],
-                'max_limit'      => $data['max_limit'],
-            ]),
+                'premium'        => (float) $data['premium'],
+                'broker_fee'     => (float) $data['broker_fee'],
+                'processing_fee' => (float) $data['processing_fee'],
+                'extra_charge'   => (float) ($data['extra_charge'] ?? 0),
+                'total'          => (float) $data['total'],
+                'min_limit'      => (int)   $data['min_limit'],
+                'max_limit'      => (int)   $data['max_limit'],
+            ],
         ];
 
         // ── 6. Charge via Stripe ───────────────────────────────────────────
@@ -148,6 +151,12 @@ class LeadCreationService
 
         // ── 9. Queue confirmation email ────────────────────────────────────
         SendLeadConfirmationEmail::dispatch($lead);
+
+        // ── 10. Generate COI + email it to the customer ────────────────────
+        // Runs as a queued job so it doesn't block the payment response.
+        // The job fills the pre-signed PDF template, saves it to storage,
+        // records it in lead_files (customer portal), and emails it.
+        GenerateCoiPdfJob::dispatch($lead->id);
 
         return [
             'success'     => true,

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Invoice;
+use App\Models\LeadAction;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Stripe\Exception\CardException;
@@ -18,11 +19,29 @@ class PublicInvoiceController extends Controller
      * Returns the invoice details needed to render the customer payment page.
      * Never exposes internal IDs beyond what the customer needs.
      */
-    public function show(string $encodeId): JsonResponse
+    public function show(Request $request, string $encodeId): JsonResponse
     {
         $invoice = Invoice::where('encode_id', $encodeId)
             ->with(['lineItems', 'coverageLines'])
             ->firstOrFail();
+
+        // Track customer view — once per IP per invoice (throttle to avoid spam)
+        if ($invoice->lead_id) {
+            $ip        = $request->ip();
+            $cacheKey  = "invoice_viewed:{$invoice->id}:{$ip}";
+            $alreadyLogged = \Illuminate\Support\Facades\Cache::has($cacheKey);
+            if (! $alreadyLogged) {
+                LeadAction::log(
+                    $invoice->lead_id,
+                    LeadAction::INVOICE_VIEWED,
+                    "Customer viewed invoice #{$invoice->id} on the payment page",
+                    null,
+                    ['invoice_id' => $invoice->id, 'ip' => $ip]
+                );
+                // Cache for 2 hours so repeat page loads don't spam the log
+                \Illuminate\Support\Facades\Cache::put($cacheKey, true, now()->addHours(2));
+            }
+        }
 
         return response()->json([
             'encode_id'       => $invoice->encode_id,
@@ -103,6 +122,22 @@ class PublicInvoiceController extends Controller
                 'invoice_status'       => Invoice::STATUS_PAID,
                 'paypal_transaction_id'=> $intent->id, // reuse this column for Stripe intent ID
             ]);
+
+            // Activity log — payment received
+            if ($invoice->lead_id) {
+                LeadAction::log(
+                    $invoice->lead_id,
+                    LeadAction::INVOICE_PAID,
+                    "Payment of \${$invoice->total_payable} received for invoice #{$invoice->id}",
+                    null,
+                    [
+                        'invoice_id'   => $invoice->id,
+                        'amount'       => $invoice->total_payable,
+                        'stripe_id'    => $intent->id,
+                        'customer_email' => $invoice->email,
+                    ]
+                );
+            }
 
         } catch (CardException $e) {
             return response()->json([

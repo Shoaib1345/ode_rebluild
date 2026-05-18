@@ -1,19 +1,11 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import api from '../../lib/axios'
 import { useAuth } from '../../hooks/useAuth'
 import toast from 'react-hot-toast'
-import CommissionsTab from '../../components/commission/CommissionsTab'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
-
-interface MonthPoint {
-  label: string
-  referrals: number
-  paid: number
-  earnings: number
-}
 
 interface StatsResponse {
   referral_string: string
@@ -29,7 +21,7 @@ interface StatsResponse {
     total_paid_out: number
     pending_payout: number
   }
-  monthly_chart: MonthPoint[]
+  monthly_chart: { label: string; referrals: number; paid: number; earnings: number }[]
 }
 
 interface ReferralRow {
@@ -59,24 +51,36 @@ interface Payout {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-const STATUS_BADGE: Record<string, string> = {
-  tried:               'bg-gray-100 text-gray-500',
-  saved:               'bg-yellow-100 text-yellow-700',
-  mq:                  'bg-orange-100 text-orange-700',
-  plan_added_manually: 'bg-purple-100 text-purple-700',
-  payment:             'bg-[#EDF0FA] text-[#105778]',
-  payment_received:    'bg-green-100 text-green-700',
-  finished:            'bg-green-200 text-green-800',
-}
+type Section = 'home' | 'leads' | 'sales' | 'invoices' | 'claims' | 'messages' | 'profile'
+
+const NAV_ITEMS: { label: string; key: Section }[] = [
+  { label: 'Home',     key: 'home'     },
+  { label: 'Leads',    key: 'leads'    },
+  { label: 'Sales',    key: 'sales'    },
+  { label: 'Invoices', key: 'invoices' },
+  { label: 'Claims',   key: 'claims'   },
+  { label: 'Messages', key: 'messages' },
+  { label: 'Profile',  key: 'profile'  },
+]
 
 const STATUS_LABEL: Record<string, string> = {
-  tried:               'Started',
-  saved:               'Saved',
+  tried:               'Awaiting Quote',
+  saved:               'Quote Saved',
   mq:                  'Manual Quote',
   plan_added_manually: 'Plan Added',
   payment:             'Awaiting Payment',
-  payment_received:    'Paid ✓',
+  payment_received:    'Paid',
   finished:            'Finished',
+}
+
+const STATUS_COLOR: Record<string, string> = {
+  tried:               'text-gray-500',
+  saved:               'text-yellow-600',
+  mq:                  'text-orange-600',
+  plan_added_manually: 'text-purple-600',
+  payment:             'text-blue-600',
+  payment_received:    'text-green-600',
+  finished:            'text-green-700',
 }
 
 function fmtDate(str: string | null) {
@@ -87,55 +91,399 @@ function fmtDate(str: string | null) {
 }
 
 function fmtMoney(n: number) {
-  return n.toLocaleString('en-US', { style: 'currency', currency: 'USD' })
+  return n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 
-// ─── Stat card ────────────────────────────────────────────────────────────────
+// ─── ODE Logo ─────────────────────────────────────────────────────────────────
 
-function StatCard({ label, value, sub, accent = false }: {
-  label: string; value: string; sub?: string; accent?: boolean
-}) {
+function OdeLogo() {
   return (
-    <div className={`rounded-xl border px-5 py-5 ${accent ? 'bg-[#1CA0DF] border-[#1CA0DF]' : 'bg-white border-gray-200'}`}>
-      <p className={`text-xs font-medium uppercase tracking-wide mb-1 ${accent ? 'text-white/70' : 'text-gray-500'}`}>
-        {label}
-      </p>
-      <p className={`text-2xl font-bold ${accent ? 'text-white' : 'text-gray-800'}`}>{value}</p>
-      {sub && <p className={`text-xs mt-1 ${accent ? 'text-white/70' : 'text-gray-400'}`}>{sub}</p>}
+    <div className="flex items-center gap-3">
+      <img src="/assets/images/logo-img.svg" alt="ODE" className="h-11 w-11 flex-shrink-0" />
+      <div className="leading-tight">
+        <p className="text-[13px] font-extrabold text-gray-800 uppercase tracking-wider">ONE DAY EVENT</p>
+        <p className="text-[10px] text-gray-400 uppercase tracking-widest font-medium">JUST ENJOY</p>
+      </div>
     </div>
   )
 }
 
-// ─── Mini bar chart (6 months) ────────────────────────────────────────────────
+// ─── Event avatar placeholder ─────────────────────────────────────────────────
 
-function MiniChart({ data }: { data: MonthPoint[] }) {
-  const maxR = Math.max(...data.map((d) => d.referrals), 1)
+function EventAvatar() {
   return (
-    <div className="flex items-end gap-1.5 h-20">
-      {data.map((d) => {
-        const hPct = (d.referrals / maxR) * 100
-        return (
-          <div key={d.label} className="flex-1 flex flex-col items-center gap-1">
-            <div className="w-full flex flex-col justify-end" style={{ height: 64 }}>
-              <div
-                className="w-full rounded-t bg-[#EDF0FA]0 transition-all"
-                style={{ height: `${Math.max(hPct, d.referrals > 0 ? 4 : 0)}%` }}
-                title={`${d.referrals} referrals, ${fmtMoney(d.earnings)}`}
-              />
+    <div className="w-[72px] h-[72px] flex-shrink-0 rounded-full bg-pink-100 overflow-hidden flex items-center justify-center">
+      <img
+        src="/assets/images/event-main.png"
+        alt="event"
+        className="w-full h-full object-cover object-top"
+        onError={(e) => {
+          const t = e.currentTarget
+          t.style.display = 'none'
+          if (t.parentElement) t.parentElement.innerHTML = `<span class="text-3xl">🎉</span>`
+        }}
+      />
+    </div>
+  )
+}
+
+// ─── Event card ───────────────────────────────────────────────────────────────
+
+function EventCard({ event }: { event: ReferralRow }) {
+  const name = [event.first_name, event.last_name].filter(Boolean).join(' ')
+  const statusLabel = STATUS_LABEL[event.submission_status] ?? event.submission_status
+  const statusColor = STATUS_COLOR[event.submission_status] ?? 'text-gray-500'
+
+  return (
+    <div className="bg-white rounded-2xl border border-gray-200 p-4 mb-3">
+      <div className="flex items-start gap-4">
+        <EventAvatar />
+        <div className="flex-1 min-w-0">
+          {name && (
+            <p className="text-sm font-semibold text-gray-800 truncate">{name}</p>
+          )}
+          {event.event_type_label && (
+            <p className="text-xs text-[#1CA0DF] font-medium truncate">{event.event_type_label}</p>
+          )}
+          <p className="text-xs text-gray-500 mt-0.5">{fmtDate(event.event_date)}</p>
+          <p className={`text-xs font-medium mt-0.5 ${statusColor}`}>{statusLabel}</p>
+        </div>
+      </div>
+      <div className="flex gap-2 mt-3">
+        <button className="flex-1 py-1.5 rounded-full border border-gray-300 text-xs font-medium text-gray-700 hover:bg-gray-50 transition-colors">
+          Details
+        </button>
+        <button
+          onClick={() => window.location.href = '/onedayevent'}
+          className="flex-1 py-1.5 rounded-full bg-red-500 hover:bg-red-600 text-white text-xs font-medium transition-colors"
+        >
+          Requote
+        </button>
+      </div>
+    </div>
+  )
+}
+
+// ─── Home / Sales view ────────────────────────────────────────────────────────
+
+function HomeView({ stats }: { stats: StatsResponse | undefined }) {
+  const { data: allRefs } = useQuery({
+    queryKey: ['affiliate-referrals-events'],
+    queryFn: () =>
+      api.get<Paginated>('/affiliate/referrals', { params: { per_page: 50 } }).then((r) => r.data),
+    staleTime: 2 * 60 * 1000,
+  })
+
+  const today = new Date().toISOString().split('T')[0]
+  const past  = (allRefs?.data ?? []).filter((e) => e.event_date && e.event_date < today)
+  const next  = (allRefs?.data ?? []).filter((e) => e.event_date && e.event_date >= today)
+
+  const commissions = stats?.earnings.total ?? 0
+
+  return (
+    <div className="p-6 md:p-8">
+      <h1 className="text-2xl font-bold text-gray-800 mb-6">Sales</h1>
+
+      {/* ── Top cards ───────────────────────────────────────── */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 mb-8">
+        {/* Left card — referral snapshot */}
+        <div className="bg-white rounded-2xl border border-gray-200 p-6 min-h-[160px] flex flex-col justify-between">
+          {stats ? (
+            <>
+              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">
+                Referral Overview
+              </p>
+              <div className="space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-500">Total referrals</span>
+                  <span className="font-semibold text-gray-800">{stats.referrals.total}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-500">Completed</span>
+                  <span className="font-semibold text-gray-800">{stats.referrals.paid}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-500">This month</span>
+                  <span className="font-semibold text-gray-800">{stats.referrals.this_month}</span>
+                </div>
+              </div>
+            </>
+          ) : (
+            <div className="flex-1 animate-pulse space-y-3">
+              <div className="h-3 w-24 bg-gray-100 rounded" />
+              <div className="h-4 w-16 bg-gray-100 rounded" />
             </div>
-            <span className="text-xs text-gray-400 whitespace-nowrap">{d.label.split(' ')[0]}</span>
+          )}
+        </div>
+
+        {/* Right card — Commissions */}
+        <div className="bg-[#1CA0DF] rounded-2xl p-6 min-h-[160px] flex flex-col">
+          <p className="text-sm text-white/80 font-medium">Commisions</p>
+          <div className="flex-1 flex items-end">
+            <p className="text-[2.4rem] font-bold text-white leading-tight">
+              $ {fmtMoney(commissions)}
+            </p>
           </div>
-        )
-      })}
+        </div>
+      </div>
+
+      {/* ── Events ──────────────────────────────────────────── */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Previous Events */}
+        <div>
+          <h2 className="text-base font-bold text-gray-800 mb-3">Previous Events</h2>
+          {past.length === 0 ? (
+            <div className="bg-white rounded-2xl border border-gray-100 px-5 py-8 text-center text-sm text-gray-400">
+              No previous events
+            </div>
+          ) : (
+            past.map((e) => <EventCard key={e.id} event={e} />)
+          )}
+        </div>
+
+        {/* Next Events */}
+        <div>
+          <h2 className="text-base font-bold text-gray-800 mb-3">Next Events</h2>
+          {next.length === 0 ? (
+            <div className="bg-white rounded-2xl border border-gray-100 px-5 py-8 text-center text-sm text-gray-400">
+              No upcoming events
+            </div>
+          ) : (
+            next.map((e) => <EventCard key={e.id} event={e} />)
+          )}
+        </div>
+      </div>
     </div>
   )
 }
 
-// ─── Header / nav ─────────────────────────────────────────────────────────────
+// ─── Leads view ───────────────────────────────────────────────────────────────
 
-function AffiliateHeader() {
-  const { user, logout } = useAuth()
-  const navigate = useNavigate()
+function LeadsView() {
+  const [page, setPage] = useState(1)
+
+  const { data: referrals, isLoading } = useQuery({
+    queryKey: ['affiliate-referrals', page],
+    queryFn: () =>
+      api.get<Paginated>('/affiliate/referrals', { params: { page, per_page: 20 } }).then((r) => r.data),
+    staleTime: 60 * 1000,
+    placeholderData: (prev) => prev,
+  })
+
+  return (
+    <div className="p-6 md:p-8">
+      <h1 className="text-2xl font-bold text-gray-800 mb-6">Leads</h1>
+
+      <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-100">
+            <thead className="bg-gray-50">
+              <tr>
+                {['#', 'Name', 'Event type', 'Event date', 'State', 'Status', 'Referred on'].map((h) => (
+                  <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">
+                    {h}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-50">
+              {isLoading
+                ? Array.from({ length: 6 }).map((_, i) => (
+                    <tr key={i} className="animate-pulse">
+                      {Array.from({ length: 7 }).map((__, j) => (
+                        <td key={j} className="px-4 py-3">
+                          <div className="h-3 bg-gray-200 rounded w-3/4" />
+                        </td>
+                      ))}
+                    </tr>
+                  ))
+                : referrals?.data.map((row) => (
+                    <tr key={row.id} className="hover:bg-gray-50 transition-colors">
+                      <td className="px-4 py-3 text-xs font-mono text-gray-400">#{row.id}</td>
+                      <td className="px-4 py-3 text-sm font-medium text-gray-700">
+                        {[row.first_name, row.last_name].filter(Boolean).join(' ') || '—'}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-gray-600">{row.event_type_label ?? '—'}</td>
+                      <td className="px-4 py-3 text-sm text-gray-600 whitespace-nowrap">{fmtDate(row.event_date)}</td>
+                      <td className="px-4 py-3 text-sm text-gray-600">{row.event_state ?? '—'}</td>
+                      <td className="px-4 py-3 text-sm">
+                        <span className={`text-xs font-medium ${STATUS_COLOR[row.submission_status] ?? 'text-gray-500'}`}>
+                          {STATUS_LABEL[row.submission_status] ?? row.submission_status}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-xs text-gray-400 whitespace-nowrap">{fmtDate(row.created_at)}</td>
+                    </tr>
+                  ))}
+            </tbody>
+          </table>
+          {!isLoading && referrals?.data.length === 0 && (
+            <div className="px-6 py-12 text-center text-sm text-gray-400">
+              No referrals yet. Share your link to get started!
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Pagination */}
+      {referrals && referrals.last_page > 1 && (
+        <div className="flex items-center justify-between text-sm text-gray-500 mt-4">
+          <span>{referrals.total} total leads</span>
+          <div className="flex gap-1">
+            <button disabled={page <= 1} onClick={() => setPage(page - 1)}
+              className="px-3 py-1.5 rounded-lg border border-gray-200 hover:bg-gray-50 disabled:opacity-40 text-xs">
+              ← Prev
+            </button>
+            <span className="px-3 py-1.5 text-xs text-gray-600">{page} / {referrals.last_page}</span>
+            <button disabled={page >= referrals.last_page} onClick={() => setPage(page + 1)}
+              className="px-3 py-1.5 rounded-lg border border-gray-200 hover:bg-gray-50 disabled:opacity-40 text-xs">
+              Next →
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ─── Sales view ───────────────────────────────────────────────────────────────
+
+function SalesView({ stats }: { stats: StatsResponse | undefined }) {
+  const { data: payouts, isLoading } = useQuery({
+    queryKey: ['affiliate-payouts'],
+    queryFn: () => api.get<Payout[]>('/affiliate/payouts').then((r) => r.data),
+    staleTime: 5 * 60 * 1000,
+  })
+
+  return (
+    <div className="p-6 md:p-8">
+      <h1 className="text-2xl font-bold text-gray-800 mb-6">Sales</h1>
+
+      {/* Earnings breakdown */}
+      {stats && (
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
+          {[
+            { label: 'Total earned',   value: `$${fmtMoney(stats.earnings.total)}` },
+            { label: 'This month',     value: `$${fmtMoney(stats.earnings.this_month)}` },
+            { label: 'Paid out',       value: `$${fmtMoney(stats.earnings.total_paid_out)}` },
+            { label: 'Pending payout', value: `$${fmtMoney(stats.earnings.pending_payout)}` },
+          ].map((c) => (
+            <div key={c.label} className="bg-white rounded-xl border border-gray-200 px-5 py-4">
+              <p className="text-xs text-gray-400 uppercase tracking-wide mb-1">{c.label}</p>
+              <p className="text-xl font-bold text-gray-800">{c.value}</p>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Payouts table */}
+      <h2 className="text-base font-semibold text-gray-700 mb-3">Payout History</h2>
+      <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+        {isLoading ? (
+          <div className="px-6 py-10 text-center">
+            <div className="animate-spin rounded-full h-7 w-7 border-b-2 border-[#1CA0DF] mx-auto" />
+          </div>
+        ) : payouts && payouts.length > 0 ? (
+          <table className="min-w-full divide-y divide-gray-100">
+            <thead className="bg-gray-50">
+              <tr>
+                {['Date', 'Amount', 'Notes'].map((h) => (
+                  <th key={h} className="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                    {h}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-50">
+              {payouts.map((p) => (
+                <tr key={p.id}>
+                  <td className="px-5 py-3 text-sm text-gray-600 whitespace-nowrap">{fmtDate(p.payment_date)}</td>
+                  <td className="px-5 py-3 text-sm font-semibold text-green-700">${fmtMoney(Number(p.payment))}</td>
+                  <td className="px-5 py-3 text-sm text-gray-500">{p.notes ?? '—'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        ) : (
+          <div className="px-6 py-12 text-center text-sm text-gray-400">
+            No payouts recorded yet.
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ─── Profile view ─────────────────────────────────────────────────────────────
+
+function ProfileView({ stats }: { stats: StatsResponse | undefined }) {
+  const { user } = useAuth()
+  const referralLink = `${window.location.origin}/onedayevent?ref=${user?.referral_string ?? ''}`
+
+  const copyLink = () => {
+    navigator.clipboard.writeText(referralLink)
+    toast.success('Referral link copied!')
+  }
+
+  return (
+    <div className="p-6 md:p-8">
+      <h1 className="text-2xl font-bold text-gray-800 mb-6">Profile</h1>
+
+      <div className="bg-white rounded-2xl border border-gray-200 p-6 mb-5">
+        <p className="text-sm text-gray-500 mb-1">Full name</p>
+        <p className="font-semibold text-gray-800">{user?.first_name} {user?.last_name}</p>
+        <p className="text-sm text-gray-500 mt-3 mb-1">Email</p>
+        <p className="text-gray-700 text-sm">{user?.email}</p>
+        {user?.referral_string && (
+          <>
+            <p className="text-sm text-gray-500 mt-3 mb-1">Referral code</p>
+            <p className="font-mono font-semibold text-gray-800">{user.referral_string}</p>
+          </>
+        )}
+      </div>
+
+      <div className="bg-white rounded-2xl border border-gray-200 p-6">
+        <p className="text-sm font-semibold text-gray-700 mb-2">Your referral link</p>
+        <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex-1 min-w-0 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm font-mono text-gray-600 truncate">
+            {referralLink}
+          </div>
+          <button
+            onClick={copyLink}
+            className="px-4 py-2 bg-[#1CA0DF] hover:bg-[#1786BB] text-white text-sm font-medium rounded-lg transition-colors whitespace-nowrap"
+          >
+            Copy link
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─── Placeholder for unimplemented sections ────────────────────────────────────
+
+function ComingSoon({ title }: { title: string }) {
+  return (
+    <div className="p-6 md:p-8">
+      <h1 className="text-2xl font-bold text-gray-800 mb-6">{title}</h1>
+      <div className="bg-white rounded-2xl border border-gray-200 px-8 py-16 text-center text-gray-400 text-sm">
+        This section is coming soon.
+      </div>
+    </div>
+  )
+}
+
+// ─── Main component ───────────────────────────────────────────────────────────
+
+export default function AffiliateDashboard() {
+  const [section, setSection] = useState<Section>('home')
+  const { user, logout }      = useAuth()
+  const navigate              = useNavigate()
+
+  const { data: stats } = useQuery({
+    queryKey:  ['affiliate-stats'],
+    queryFn:   () => api.get<StatsResponse>('/affiliate/stats').then((r) => r.data),
+    staleTime: 2 * 60 * 1000,
+  })
 
   const handleLogout = async () => {
     try { await api.post('/auth/logout') } catch { /* ignore */ }
@@ -145,299 +493,74 @@ function AffiliateHeader() {
   }
 
   return (
-    <header className="bg-white border-b border-gray-200 px-4 sm:px-8 h-14 flex items-center justify-between">
-      <span className="text-[#105778] font-bold text-lg">
-        ODE <span className="text-gray-600 font-normal text-sm">Affiliate Portal</span>
-      </span>
-      <div className="flex items-center gap-4 text-sm text-gray-600">
-        <span className="hidden sm:inline">{user?.first_name} {user?.last_name}</span>
-        <button onClick={handleLogout} className="text-gray-400 hover:text-red-500 transition-colors text-xs">
-          Sign out
-        </button>
-      </div>
-    </header>
-  )
-}
+    <div className="flex min-h-screen bg-gray-50">
 
-// ─── Tab type ─────────────────────────────────────────────────────────────────
+      {/* ── Sidebar ─────────────────────────────────────────────────────── */}
+      <aside className="w-[260px] flex-shrink-0 bg-white border-r border-gray-200 flex flex-col min-h-screen">
 
-type Tab = 'overview' | 'referrals' | 'payouts' | 'commissions'
+        {/* Logo */}
+        <div className="px-5 pt-6 pb-5 border-b border-gray-100">
+          <OdeLogo />
+        </div>
 
-// ─── Page ─────────────────────────────────────────────────────────────────────
-
-export default function AffiliateDashboard() {
-  const [tab, setTab]   = useState<Tab>('overview')
-  const [page, setPage] = useState(1)
-  const { user }        = useAuth()
-
-  // Stats
-  const { data: stats, isLoading: statsLoading } = useQuery({
-    queryKey:  ['affiliate-stats'],
-    queryFn:   () => api.get<StatsResponse>('/affiliate/stats').then((r) => r.data),
-    staleTime: 2 * 60 * 1000,
-  })
-
-  // Referrals (only fetched when on that tab)
-  const { data: referrals, isLoading: refLoading } = useQuery({
-    queryKey:  ['affiliate-referrals', page],
-    queryFn:   () => api.get<Paginated>('/affiliate/referrals', { params: { page, per_page: 20 } }).then((r) => r.data),
-    enabled:   tab === 'referrals',
-    staleTime: 60 * 1000,
-    placeholderData: (prev) => prev,
-  })
-
-  // Payouts (only fetched when on that tab)
-  const { data: payouts, isLoading: payoutsLoading } = useQuery({
-    queryKey:  ['affiliate-payouts'],
-    queryFn:   () => api.get<Payout[]>('/affiliate/payouts').then((r) => r.data),
-    enabled:   tab === 'payouts',
-    staleTime: 5 * 60 * 1000,
-  })
-
-  const referralLink = `${window.location.origin}/onedayevent?ref=${user?.referral_string ?? ''}`
-
-  const copyLink = () => {
-    navigator.clipboard.writeText(referralLink)
-    toast.success('Referral link copied!')
-  }
-
-  const tabCls = (t: Tab) =>
-    `px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
-      tab === t
-        ? 'border-[#1CA0DF] text-[#1CA0DF]'
-        : 'border-transparent text-gray-500 hover:text-gray-700'
-    }`
-
-  return (
-    <div className="min-h-screen bg-gray-50">
-      <AffiliateHeader />
-
-      <main className="max-w-5xl mx-auto px-4 sm:px-6 py-6 space-y-6">
-
-        {/* ── Welcome + referral link ──────────────────────────────── */}
-        <div className="bg-white rounded-xl border border-gray-200 px-6 py-5">
-          <h1 className="text-lg font-bold text-gray-800 mb-1">
-            Welcome back, {user?.first_name}!
-          </h1>
-          <p className="text-sm text-gray-500 mb-4">
-            Share your unique referral link to earn commissions on every completed policy.
+        {/* User info */}
+        <div className="px-5 py-4 border-b border-gray-100">
+          <p className="text-sm font-semibold text-gray-800">
+            {user?.first_name} {user?.last_name}
           </p>
-          <div className="flex items-center gap-2 flex-wrap">
-            <div className="flex-1 min-w-0 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm font-mono text-gray-600 truncate">
-              {referralLink}
-            </div>
+          <p className="text-xs text-gray-500 truncate mt-0.5">{user?.email}</p>
+        </div>
+
+        {/* Nav */}
+        <nav className="flex-1 px-4 py-5 space-y-0.5">
+          {NAV_ITEMS.map((item) => (
             <button
-              onClick={copyLink}
-              className="px-4 py-2 bg-[#1CA0DF] hover:bg-[#1786BB] text-white text-sm font-medium rounded-lg transition-colors whitespace-nowrap"
+              key={item.key}
+              onClick={() => setSection(item.key)}
+              className={`w-full text-left px-4 py-2 rounded-lg text-sm transition-colors ${
+                section === item.key
+                  ? 'bg-gray-100 border border-gray-200 font-semibold text-gray-900'
+                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50 font-normal'
+              }`}
             >
-              Copy link
+              {item.label}
             </button>
-          </div>
-          {user?.referral_string && (
-            <p className="text-xs text-gray-400 mt-2">
-              Your referral code: <span className="font-mono font-semibold text-gray-600">{user.referral_string}</span>
-            </p>
-          )}
-        </div>
+          ))}
 
-        {/* ── Tabs ────────────────────────────────────────────────── */}
-        <div className="border-b border-gray-200">
-          <div className="flex gap-1">
-            <button className={tabCls('overview')}     onClick={() => setTab('overview')}>Overview</button>
-            <button className={tabCls('referrals')}    onClick={() => { setTab('referrals'); setPage(1) }}>Referrals</button>
-            <button className={tabCls('payouts')}      onClick={() => setTab('payouts')}>Payouts</button>
-            <button className={tabCls('commissions')}  onClick={() => setTab('commissions')}>Commissions & W9</button>
-          </div>
-        </div>
+          <button
+            onClick={handleLogout}
+            className="w-full text-left px-4 py-2 rounded-lg text-sm text-gray-600 hover:text-red-600 hover:bg-red-50 transition-colors font-normal mt-2"
+          >
+            Logout
+          </button>
+        </nav>
+      </aside>
 
-        {/* ── Overview tab ────────────────────────────────────────── */}
-        {tab === 'overview' && (
-          <div className="space-y-5">
-            {statsLoading ? (
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                {Array.from({ length: 4 }).map((_, i) => (
-                  <div key={i} className="bg-white rounded-xl border border-gray-200 px-5 py-5 animate-pulse">
-                    <div className="h-3 w-24 bg-gray-200 rounded mb-3" />
-                    <div className="h-7 w-16 bg-gray-200 rounded" />
-                  </div>
-                ))}
-              </div>
-            ) : stats ? (
-              <>
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                  <StatCard
-                    label="Total referrals"
-                    value={String(stats.referrals.total)}
-                    sub={`${stats.referrals.paid} completed`}
-                  />
-                  <StatCard
-                    label="This month"
-                    value={String(stats.referrals.this_month)}
-                    sub={`${stats.referrals.paid_month} completed`}
-                    accent
-                  />
-                  <StatCard
-                    label="Total earned"
-                    value={fmtMoney(stats.earnings.total)}
-                    sub={`${fmtMoney(stats.earnings.this_month)} this month`}
-                  />
-                  <StatCard
-                    label="Pending payout"
-                    value={fmtMoney(stats.earnings.pending_payout)}
-                    sub={`${fmtMoney(stats.earnings.total_paid_out)} paid out`}
-                    accent={stats.earnings.pending_payout > 0}
-                  />
-                </div>
+      {/* ── Main content ────────────────────────────────────────────────── */}
+      <div className="flex-1 flex flex-col">
 
-                {/* 6-month chart */}
-                <div className="bg-white rounded-xl border border-gray-200 px-6 py-5">
-                  <h2 className="text-sm font-semibold text-gray-700 mb-4">Referrals — last 6 months</h2>
-                  <MiniChart data={stats.monthly_chart} />
-                  <div className="mt-3 flex gap-6 text-xs text-gray-400">
-                    {stats.monthly_chart.map((d) => (
-                      <span key={d.label} className="flex-1 text-center">
-                        {d.referrals > 0 && <span className="text-[#1CA0DF] font-medium">{d.referrals}</span>}
-                      </span>
-                    ))}
-                  </div>
-                </div>
+        {/* Top bar */}
+        <header className="flex items-center justify-end px-6 py-3 bg-white border-b border-gray-100">
+          <Link
+            to="/onedayevent"
+            className="bg-red-500 hover:bg-red-600 text-white text-sm font-semibold px-6 py-2 rounded-full transition-colors"
+          >
+            Get Quote
+          </Link>
+        </header>
 
-                {/* Earnings breakdown */}
-                <div className="bg-white rounded-xl border border-gray-200 px-6 py-5">
-                  <h2 className="text-sm font-semibold text-gray-700 mb-4">Earnings breakdown</h2>
-                  <div className="space-y-2 text-sm">
-                    {stats.monthly_chart.filter((d) => d.earnings > 0).length === 0 ? (
-                      <p className="text-gray-400 text-xs">No earnings recorded yet. Complete referrals will appear here.</p>
-                    ) : (
-                      stats.monthly_chart.map((d) => d.earnings > 0 && (
-                        <div key={d.label} className="flex justify-between py-1.5 border-b border-gray-50 last:border-0">
-                          <span className="text-gray-500">{d.label}</span>
-                          <span className="font-medium text-gray-800">{fmtMoney(d.earnings)}</span>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                </div>
-              </>
-            ) : null}
-          </div>
-        )}
+        {/* Section content */}
+        <main className="flex-1 overflow-y-auto">
+          {section === 'home'     && <HomeView    stats={stats} />}
+          {section === 'leads'    && <LeadsView />}
+          {section === 'sales'    && <SalesView   stats={stats} />}
+          {section === 'invoices' && <ComingSoon title="Invoices" />}
+          {section === 'claims'   && <ComingSoon title="Claims" />}
+          {section === 'messages' && <ComingSoon title="Messages" />}
+          {section === 'profile'  && <ProfileView stats={stats} />}
+        </main>
 
-        {/* ── Referrals tab ────────────────────────────────────────── */}
-        {tab === 'referrals' && (
-          <div className="space-y-4">
-            <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-100">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      {['#', 'Name', 'Event type', 'Event date', 'State', 'Status', 'Referred on'].map((h) => (
-                        <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">
-                          {h}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-50">
-                    {refLoading
-                      ? Array.from({ length: 5 }).map((_, i) => (
-                          <tr key={i} className="animate-pulse">
-                            {Array.from({ length: 7 }).map((__, j) => (
-                              <td key={j} className="px-4 py-3">
-                                <div className="h-3 bg-gray-200 rounded w-3/4" />
-                              </td>
-                            ))}
-                          </tr>
-                        ))
-                      : referrals?.data.map((row) => (
-                          <tr key={row.id} className="hover:bg-gray-50 transition-colors">
-                            <td className="px-4 py-3 text-xs font-mono text-gray-400">#{row.id}</td>
-                            <td className="px-4 py-3 text-sm font-medium text-gray-700">
-                              {[row.first_name, row.last_name].filter(Boolean).join(' ') || '—'}
-                            </td>
-                            <td className="px-4 py-3 text-sm text-gray-600">{row.event_type_label ?? '—'}</td>
-                            <td className="px-4 py-3 text-sm text-gray-600 whitespace-nowrap">{fmtDate(row.event_date)}</td>
-                            <td className="px-4 py-3 text-sm text-gray-600">{row.event_state ?? '—'}</td>
-                            <td className="px-4 py-3">
-                              <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_BADGE[row.submission_status] ?? 'bg-gray-100 text-gray-500'}`}>
-                                {STATUS_LABEL[row.submission_status] ?? row.submission_status}
-                              </span>
-                            </td>
-                            <td className="px-4 py-3 text-xs text-gray-400 whitespace-nowrap">{fmtDate(row.created_at)}</td>
-                          </tr>
-                        ))}
-                  </tbody>
-                </table>
-                {!refLoading && referrals?.data.length === 0 && (
-                  <div className="px-6 py-12 text-center text-sm text-gray-400">
-                    No referrals yet. Share your link to get started!
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Pagination */}
-            {referrals && referrals.last_page > 1 && (
-              <div className="flex items-center justify-between text-sm text-gray-500">
-                <span>{referrals.total} total referrals</span>
-                <div className="flex gap-1">
-                  <button disabled={page <= 1} onClick={() => setPage(page - 1)}
-                    className="px-3 py-1.5 rounded border border-gray-200 hover:bg-gray-50 disabled:opacity-40">
-                    ← Prev
-                  </button>
-                  <span className="px-3 py-1.5 text-gray-600">
-                    {page} / {referrals.last_page}
-                  </span>
-                  <button disabled={page >= referrals.last_page} onClick={() => setPage(page + 1)}
-                    className="px-3 py-1.5 rounded border border-gray-200 hover:bg-gray-50 disabled:opacity-40">
-                    Next →
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* ── Commissions & W9 tab ────────────────────────────────── */}
-        {tab === 'commissions' && <CommissionsTab />}
-
-        {/* ── Payouts tab ──────────────────────────────────────────── */}
-        {tab === 'payouts' && (
-          <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-            {payoutsLoading ? (
-              <div className="px-6 py-10 text-center">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#1CA0DF] mx-auto" />
-              </div>
-            ) : payouts && payouts.length > 0 ? (
-              <table className="min-w-full divide-y divide-gray-100">
-                <thead className="bg-gray-50">
-                  <tr>
-                    {['Date', 'Amount', 'Notes'].map((h) => (
-                      <th key={h} className="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                        {h}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-50">
-                  {payouts.map((p) => (
-                    <tr key={p.id}>
-                      <td className="px-5 py-3 text-sm text-gray-600 whitespace-nowrap">{fmtDate(p.payment_date)}</td>
-                      <td className="px-5 py-3 text-sm font-semibold text-green-700">{fmtMoney(Number(p.payment))}</td>
-                      <td className="px-5 py-3 text-sm text-gray-500">{p.notes ?? '—'}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            ) : (
-              <div className="px-6 py-12 text-center text-sm text-gray-400">
-                No payouts recorded yet. Payouts are processed by our team once your balance reaches the threshold.
-              </div>
-            )}
-          </div>
-        )}
-
-      </main>
+      </div>
     </div>
   )
 }

@@ -29,7 +29,14 @@ export const useAuthStore = create<AuthState>()(
     }),
     {
       name: 'ode-auth', // localStorage key
-      partialize: (state) => ({ user: state.user, token: state.token }),
+      // isAuthenticated MUST be persisted — without it the store rehydrates
+      // with isAuthenticated=false on every refresh, causing ProtectedRoute
+      // to redirect to /login before the token can be read.
+      partialize: (state) => ({
+        user:            state.user,
+        token:           state.token,
+        isAuthenticated: state.isAuthenticated,
+      }),
     }
   )
 )

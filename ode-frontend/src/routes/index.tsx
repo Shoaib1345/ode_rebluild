@@ -157,7 +157,19 @@ export default function AppRoutes() {
 
         {/* ── Admin ─────────────────────────────────────────────────────── */}
         <Route path="/admin"                    element={<ProtectedRoute maxLevel={2}><DashboardPage /></ProtectedRoute>} />
+        {/* ── Leads sub-views (static segments BEFORE :id) ────────────── */}
         <Route path="/admin/leads"              element={<ProtectedRoute maxLevel={2}><LeadsPage /></ProtectedRoute>} />
+        <Route path="/admin/leads/priority"     element={<ProtectedRoute maxLevel={2}><LeadsPage viewFilter="priority" /></ProtectedRoute>} />
+        <Route path="/admin/leads/sold"         element={<ProtectedRoute maxLevel={2}><LeadsPage viewFilter="sold" /></ProtectedRoute>} />
+        <Route path="/admin/leads/past"         element={<ProtectedRoute maxLevel={2}><LeadsPage viewFilter="past" /></ProtectedRoute>} />
+        <Route path="/admin/leads/follow-up"    element={<ProtectedRoute maxLevel={2}><LeadsPage viewFilter="follow_up" /></ProtectedRoute>} />
+        <Route path="/admin/leads/future"       element={<ProtectedRoute maxLevel={2}><LeadsPage viewFilter="future" /></ProtectedRoute>} />
+        <Route path="/admin/leads/untouched"    element={<ProtectedRoute maxLevel={2}><LeadsPage viewFilter="untouched" /></ProtectedRoute>} />
+        <Route path="/admin/leads/bound"        element={<ProtectedRoute maxLevel={2}><LeadsPage viewFilter="bound" /></ProtectedRoute>} />
+        <Route path="/admin/leads/cancelled"    element={<ProtectedRoute maxLevel={2}><LeadsPage viewFilter="cancelled" /></ProtectedRoute>} />
+        <Route path="/admin/leads/untouch"      element={<ProtectedRoute maxLevel={2}><LeadsPage viewFilter="untouch" /></ProtectedRoute>} />
+        <Route path="/admin/leads/my"           element={<ProtectedRoute maxLevel={2}><LeadsPage viewFilter="my_leads" /></ProtectedRoute>} />
+        {/* Lead detail — dynamic :id comes AFTER all static sub-routes */}
         <Route path="/admin/leads/:id"          element={<ProtectedRoute maxLevel={2}><LeadDetailPage /></ProtectedRoute>} />
         <Route path="/admin/invoices"           element={<ProtectedRoute maxLevel={2}><InvoicesPage /></ProtectedRoute>} />
         <Route path="/admin/invoices/new"       element={<ProtectedRoute maxLevel={2}><InvoiceCreatePage /></ProtectedRoute>} />

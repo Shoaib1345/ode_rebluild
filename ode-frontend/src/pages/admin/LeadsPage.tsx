@@ -34,17 +34,41 @@ interface PaginatedLeads {
   to: number | null
 }
 
-// ─── Constants ────────────────────────────────────────────────────────────────
+// ─── View filter config ───────────────────────────────────────────────────────
+
+interface ViewConfig {
+  title: string
+  /** Extra params merged into every API call for this view */
+  apiParams: Record<string, string>
+  /** Tailwind bg+text class for the title badge */
+  badge?: string
+}
+
+const VIEW_CONFIG: Record<string, ViewConfig> = {
+  '':          { title: 'All Leads',       apiParams: {},                        badge: 'bg-gray-100 text-gray-600' },
+  'priority':  { title: 'Priority Leads',  apiParams: { priority: '1' },         badge: 'bg-amber-100 text-amber-700' },
+  'sold':      { title: 'Sold Leads',      apiParams: { sold: '1' },             badge: 'bg-green-100 text-green-700' },
+  'past':      { title: 'Past Leads',      apiParams: { past_events: '1' },      badge: 'bg-gray-100 text-gray-600' },
+  'follow_up': { title: 'All Follow Up',   apiParams: { follow_up: '1' },        badge: 'bg-blue-100 text-blue-700' },
+  'future':    { title: 'Future Leads',    apiParams: { future_events: '1' },    badge: 'bg-purple-100 text-purple-700' },
+  'untouched': { title: 'Untouched Leads', apiParams: { untouched: '1' },        badge: 'bg-red-100 text-red-700' },
+  'bound':     { title: 'Bound Leads',     apiParams: { bound: '1' },            badge: 'bg-emerald-100 text-emerald-700' },
+  'cancelled': { title: 'Cancel Leads',    apiParams: { cancelled: '1' },        badge: 'bg-red-100 text-red-600' },
+  'untouch':   { title: 'Untouch Leads',   apiParams: { untouch: '1' },          badge: 'bg-orange-100 text-orange-700' },
+  'my_leads':  { title: 'My Leads',        apiParams: { my_leads: '1' },         badge: 'bg-[#EDF0FA] text-[#105778]' },
+}
+
+// ─── Status constants ─────────────────────────────────────────────────────────
 
 const STATUSES = [
-  { value: '',                   label: 'All statuses' },
-  { value: 'tried',              label: 'Started' },
-  { value: 'saved',              label: 'Saved' },
-  { value: 'mq',                 label: 'Manual Quote' },
-  { value: 'plan_added_manually',label: 'Plan Added' },
-  { value: 'payment',            label: 'Awaiting Payment' },
-  { value: 'payment_received',   label: 'Paid' },
-  { value: 'finished',           label: 'Finished' },
+  { value: '',                    label: 'All statuses' },
+  { value: 'tried',               label: 'Started' },
+  { value: 'saved',               label: 'Saved' },
+  { value: 'mq',                  label: 'Manual Quote' },
+  { value: 'plan_added_manually', label: 'Plan Added' },
+  { value: 'payment',             label: 'Awaiting Payment' },
+  { value: 'payment_received',    label: 'Paid' },
+  { value: 'finished',            label: 'Finished' },
 ]
 
 const STATUS_BADGE: Record<string, string> = {
@@ -77,18 +101,8 @@ function fmtDate(str: string | null) {
 }
 
 function fullName(row: LeadRow) {
-  const name = [row.first_name, row.last_name].filter(Boolean).join(' ')
-  return name || '—'
+  return [row.first_name, row.last_name].filter(Boolean).join(' ') || '—'
 }
-
-// ─── Data fetcher ─────────────────────────────────────────────────────────────
-
-async function fetchLeads(params: Record<string, string>): Promise<PaginatedLeads> {
-  const res = await api.get<PaginatedLeads>('/admin/leads', { params })
-  return res.data
-}
-
-// ─── Sub-components ───────────────────────────────────────────────────────────
 
 function SortIcon({ active, dir }: { active: boolean; dir: 'asc' | 'desc' }) {
   if (!active) return <span className="ml-1 text-gray-300">↕</span>
@@ -97,25 +111,41 @@ function SortIcon({ active, dir }: { active: boolean; dir: 'asc' | 'desc' }) {
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
-export default function LeadsPage() {
+interface Props {
+  /** Which sub-view to show. Maps to specific API filter params. */
+  viewFilter?: string
+}
+
+export default function LeadsPage({ viewFilter = '' }: Props) {
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
 
-  // Read filter state from URL so the page is shareable / browser-back-safe
-  const [search,   setSearch]   = useState(searchParams.get('search')  ?? '')
-  const [status,   setStatus]   = useState(searchParams.get('status')  ?? '')
-  const [sort,     setSort]     = useState(searchParams.get('sort')    ?? 'created_at')
-  const [dir,      setDir]      = useState<'asc' | 'desc'>((searchParams.get('dir') as 'asc' | 'desc') ?? 'desc')
-  const [page,     setPage]     = useState(Number(searchParams.get('page') ?? 1))
+  const cfg = VIEW_CONFIG[viewFilter] ?? VIEW_CONFIG['']
 
-  // Build query params
-  const queryParams: Record<string, string> = { sort, dir, page: String(page), per_page: '25' }
+  // User-controllable filter state (from URL)
+  const [search, setSearch] = useState(searchParams.get('search') ?? '')
+  const [status, setStatus] = useState(searchParams.get('status') ?? '')
+  const [sort,   setSort]   = useState(searchParams.get('sort')   ?? 'created_at')
+  const [dir,    setDir]    = useState<'asc' | 'desc'>((searchParams.get('dir') as 'asc' | 'desc') ?? 'desc')
+  const [page,   setPage]   = useState(Number(searchParams.get('page') ?? 1))
+
+  // Merge view-specific params + user filter params
+  const queryParams: Record<string, string> = {
+    sort,
+    dir,
+    page: String(page),
+    per_page: '25',
+    ...cfg.apiParams,          // view-specific filters (priority, bound, etc.)
+  }
   if (search) queryParams.search = search
   if (status) queryParams.status = status
 
   const { data, isLoading, isError, refetch } = useQuery({
-    queryKey:  ['admin-leads', queryParams],
-    queryFn:   () => fetchLeads(queryParams),
+    queryKey:  ['admin-leads', viewFilter, queryParams],
+    queryFn:   async () => {
+      const res = await api.get<PaginatedLeads>('/admin/leads', { params: queryParams })
+      return res.data
+    },
     staleTime: 30 * 1000,
     placeholderData: (prev) => prev,
   })
@@ -145,9 +175,7 @@ export default function LeadsPage() {
 
   const handleSort = (col: string) => {
     const newDir = sort === col && dir === 'desc' ? 'asc' : 'desc'
-    setSort(col)
-    setDir(newDir)
-    setPage(1)
+    setSort(col); setDir(newDir); setPage(1)
     syncUrl({ sort: col, dir: newDir, page: '1' })
   }
 
@@ -163,26 +191,40 @@ export default function LeadsPage() {
     <AdminLayout>
       <div className="space-y-5">
 
-        {/* ── Header ──────────────────────────────────────────────────── */}
-        <div className="flex items-center justify-between">
-          <h1 className="text-xl font-bold text-gray-800">Leads</h1>
-          {data && (
-            <span className="text-xs text-gray-400">
-              {data.total.toLocaleString()} total
-            </span>
-          )}
+        {/* ── Header ────────────────────────────────────────────────────── */}
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <div className="flex items-center gap-3">
+            <h1 className="text-xl font-bold text-gray-800">{cfg.title}</h1>
+            {cfg.badge && (
+              <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${cfg.badge}`}>
+                {viewFilter === '' ? 'All' : cfg.title.split(' ')[0]}
+              </span>
+            )}
+          </div>
+          <div className="flex items-center gap-3">
+            {data && (
+              <span className="text-xs text-gray-400">
+                {data.total.toLocaleString()} lead{data.total !== 1 ? 's' : ''}
+              </span>
+            )}
+            <button
+              onClick={() => refetch()}
+              className="text-xs text-gray-400 hover:text-[#1CA0DF] transition-colors"
+            >
+              Refresh
+            </button>
+          </div>
         </div>
 
-        {/* ── Filters ─────────────────────────────────────────────────── */}
+        {/* ── Filters bar ───────────────────────────────────────────────── */}
         <div className="bg-white rounded-xl border border-gray-200 px-4 py-3 flex flex-wrap items-center gap-3">
-          {/* Search */}
           <form onSubmit={handleSearch} className="flex items-center gap-2 flex-1 min-w-48">
             <input
               type="search"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search name, email, phone…"
-              className="flex-1 text-sm border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#1CA0DF]"
+              className="flex-1 text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#1CA0DF]/30"
             />
             <button
               type="submit"
@@ -192,26 +234,30 @@ export default function LeadsPage() {
             </button>
           </form>
 
-          {/* Status filter */}
           <select
             value={status}
             onChange={(e) => handleStatusChange(e.target.value)}
-            className="text-sm border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#1CA0DF]"
+            className="text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#1CA0DF]/30 bg-white"
           >
             {STATUSES.map((s) => (
               <option key={s.value} value={s.value}>{s.label}</option>
             ))}
           </select>
 
-          <button
-            onClick={() => refetch()}
-            className="text-xs text-gray-400 hover:text-[#1CA0DF] transition-colors"
-          >
-            Refresh
-          </button>
+          {(search || status) && (
+            <button
+              onClick={() => {
+                setSearch(''); setStatus(''); setPage(1)
+                setSearchParams({}, { replace: true })
+              }}
+              className="text-xs text-gray-400 hover:text-red-500 transition-colors"
+            >
+              Clear filters
+            </button>
+          )}
         </div>
 
-        {/* ── Table ───────────────────────────────────────────────────── */}
+        {/* ── Table ─────────────────────────────────────────────────────── */}
         <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
           {isError ? (
             <div className="px-6 py-10 text-center text-sm text-red-600">
@@ -257,7 +303,7 @@ export default function LeadsPage() {
                   {isLoading
                     ? Array.from({ length: 8 }).map((_, i) => (
                         <tr key={i} className="animate-pulse">
-                          {Array.from({ length: 9 }).map((__, j) => (
+                          {Array.from({ length: 9 }).map((_, j) => (
                             <td key={j} className="px-4 py-3">
                               <div className="h-3 bg-gray-200 rounded w-3/4" />
                             </td>
@@ -268,7 +314,7 @@ export default function LeadsPage() {
                         <tr
                           key={lead.id}
                           onClick={() => navigate(`/admin/leads/${lead.id}`)}
-                          className="hover:bg-[#EDF0FA] cursor-pointer transition-colors"
+                          className="hover:bg-[#EDF7FD] cursor-pointer transition-colors group"
                         >
                           <td className="px-4 py-3 text-xs font-mono text-gray-400">
                             #{lead.id}
@@ -279,10 +325,10 @@ export default function LeadsPage() {
                               <span className="ml-1 text-red-400" title="On hold">⏸</span>
                             )}
                           </td>
-                          <td className="px-4 py-3 text-sm font-medium text-gray-800 whitespace-nowrap">
+                          <td className="px-4 py-3 text-sm font-semibold text-gray-800 whitespace-nowrap group-hover:text-[#1CA0DF] transition-colors">
                             {fullName(lead)}
                           </td>
-                          <td className="px-4 py-3 text-sm text-gray-600 max-w-[180px] truncate">
+                          <td className="px-4 py-3 text-sm text-gray-500 max-w-[200px] truncate">
                             {lead.email ?? '—'}
                           </td>
                           <td className="px-4 py-3 text-sm text-gray-600 whitespace-nowrap">
@@ -315,32 +361,38 @@ export default function LeadsPage() {
                 </tbody>
               </table>
 
-              {/* Empty state */}
               {!isLoading && data?.data.length === 0 && (
-                <div className="px-6 py-12 text-center text-sm text-gray-400">
-                  No leads found matching your filters.
+                <div className="px-6 py-12 text-center">
+                  <p className="text-sm text-gray-400">No leads found for this view.</p>
+                  {(search || status) && (
+                    <button
+                      onClick={() => { setSearch(''); setStatus(''); setPage(1); setSearchParams({}, { replace: true }) }}
+                      className="mt-2 text-xs text-[#1CA0DF] hover:underline"
+                    >
+                      Clear filters
+                    </button>
+                  )}
                 </div>
               )}
             </div>
           )}
         </div>
 
-        {/* ── Pagination ──────────────────────────────────────────────── */}
+        {/* ── Pagination ────────────────────────────────────────────────── */}
         {data && data.last_page > 1 && (
           <div className="flex items-center justify-between text-sm text-gray-500">
-            <span>
-              {data.from}–{data.to} of {data.total.toLocaleString()}
+            <span className="text-xs text-gray-400">
+              Showing {data.from}–{data.to} of {data.total.toLocaleString()}
             </span>
             <div className="flex items-center gap-1">
               <button
                 disabled={page <= 1}
                 onClick={() => handlePage(page - 1)}
-                className="px-3 py-1.5 rounded border border-gray-200 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                className="px-3 py-1.5 rounded-lg border border-gray-200 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors text-xs"
               >
                 ← Prev
               </button>
 
-              {/* Page number buttons — show up to 7 around current page */}
               {Array.from({ length: data.last_page }, (_, i) => i + 1)
                 .filter((p) => p === 1 || p === data.last_page || Math.abs(p - page) <= 2)
                 .reduce<(number | '…')[]>((acc, p, i, arr) => {
@@ -350,12 +402,12 @@ export default function LeadsPage() {
                 }, [])
                 .map((p, i) =>
                   p === '…' ? (
-                    <span key={`ellipsis-${i}`} className="px-2 text-gray-300">…</span>
+                    <span key={`e-${i}`} className="px-2 text-gray-300 text-xs">…</span>
                   ) : (
                     <button
                       key={p}
                       onClick={() => handlePage(p as number)}
-                      className={`px-3 py-1.5 rounded border transition-colors ${
+                      className={`px-3 py-1.5 rounded-lg border transition-colors text-xs ${
                         p === page
                           ? 'border-[#1CA0DF] bg-[#1CA0DF] text-white'
                           : 'border-gray-200 hover:bg-gray-50'
@@ -369,7 +421,7 @@ export default function LeadsPage() {
               <button
                 disabled={page >= data.last_page}
                 onClick={() => handlePage(page + 1)}
-                className="px-3 py-1.5 rounded border border-gray-200 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                className="px-3 py-1.5 rounded-lg border border-gray-200 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors text-xs"
               >
                 Next →
               </button>

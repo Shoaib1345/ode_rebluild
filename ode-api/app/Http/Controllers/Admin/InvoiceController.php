@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Jobs\SendInvoiceEmail;
 use App\Models\Invoice;
 use App\Models\Lead;
+use App\Models\LeadAction;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -147,6 +148,25 @@ class InvoiceController extends Controller
         // Queue invoice email to recipient
         SendInvoiceEmail::dispatch($invoice);
 
+        // Activity log — invoice created
+        if ($invoice->lead_id) {
+            $actor = $request->user();
+            LeadAction::log(
+                $invoice->lead_id,
+                LeadAction::INVOICE_CREATED,
+                "Invoice #{$invoice->id} created and emailed to {$invoice->email}",
+                $actor->id,
+                [
+                    'invoice_id' => $invoice->id,
+                    'encode_id'  => $invoice->encode_id,
+                    'amount'     => $invoice->total_payable,
+                    'to'         => $invoice->email,
+                    'subject'    => $invoice->email_subject,
+                    'type'       => $invoice->type,
+                ]
+            );
+        }
+
         return response()->json($invoice, 201);
     }
 
@@ -176,7 +196,20 @@ class InvoiceController extends Controller
             'email_bcc'      => ['sometimes', 'nullable', 'email'],
         ]);
 
+        $oldStatus = $invoice->invoice_status;
         $invoice->update($data);
+
+        // Log paid status change
+        if (isset($data['invoice_status']) && $data['invoice_status'] != $oldStatus && $invoice->lead_id) {
+            $label = $data['invoice_status'] == Invoice::STATUS_PAID ? 'Paid' : 'Unpaid';
+            LeadAction::log(
+                $invoice->lead_id,
+                LeadAction::INVOICE_PAID,
+                "Invoice #{$invoice->id} marked as {$label} by admin",
+                $request->user()->id,
+                ['invoice_id' => $invoice->id, 'status' => $label]
+            );
+        }
 
         return response()->json($invoice->fresh(['lineItems', 'coverageLines']));
     }

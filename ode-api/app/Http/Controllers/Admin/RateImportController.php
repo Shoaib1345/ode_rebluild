@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\CarrierGlLimit;
 use App\Models\EventRate;
 use App\Models\EventRateState;
+use App\Services\PlanBuilderService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -23,6 +24,8 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
  */
 class RateImportController extends Controller
 {
+    public function __construct(private readonly PlanBuilderService $planBuilder) {}
+
     // ── Column definitions ────────────────────────────────────────────────────
 
     private const RATE_HEADERS = [
@@ -305,6 +308,43 @@ class RateImportController extends Controller
             fputcsv($out, $example);
             fclose($out);
         }, 'carrier_gl_limits_template.csv', ['Content-Type' => 'text/csv']);
+    }
+
+    // ── Admin plan lookup (invoice builder) ───────────────────────────────────
+
+    /**
+     * GET /api/admin/rates/plans
+     *
+     * Runs the full production plan-builder and returns four named tier options
+     * (firstOption → fourthOption) with all fees calculated, GL limit
+     * descriptors attached, and one plan marked as recommended.
+     *
+     * Query params (all optional):
+     *   event_type_id — integer
+     *   no_of_people  — integer (audience filter)
+     *   state         — 2-letter state code
+     *   carrier       — ASI | FDEAN | IH
+     *   host_liquor   — boolean
+     *   noha          — boolean
+     *   w_o_s         — boolean
+     *   p_a_n_c_b     — boolean
+     */
+    public function plans(Request $request): JsonResponse
+    {
+        $request->validate([
+            'event_type_id' => ['nullable', 'integer'],
+            'no_of_people'  => ['nullable', 'integer', 'min:1'],
+            'state'         => ['nullable', 'string', 'size:2'],
+            'carrier'       => ['nullable', 'string', 'max:20'],
+            'host_liquor'   => ['nullable', 'boolean'],
+            'noha'          => ['nullable', 'boolean'],
+            'w_o_s'         => ['nullable', 'boolean'],
+            'p_a_n_c_b'     => ['nullable', 'boolean'],
+        ]);
+
+        return response()->json(
+            $this->planBuilder->buildPlans($request->all())
+        );
     }
 
     // ── Stats ─────────────────────────────────────────────────────────────────

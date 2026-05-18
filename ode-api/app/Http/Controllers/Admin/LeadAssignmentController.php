@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Lead;
+use App\Models\LeadAction;
 use App\Models\User;
 use App\Models\UserRole;
 use Illuminate\Http\JsonResponse;
@@ -76,6 +77,14 @@ class LeadAssignmentController extends Controller
 
         $lead->assignedUsers()->attach($user->id);
 
+        LeadAction::log(
+            $lead->id,
+            LeadAction::AGENT_ASSIGNED,
+            "{$user->first_name} {$user->last_name} ({$user->role?->role_name}) assigned to this lead",
+            $request->user()->id,
+            ['assignee_id' => $user->id, 'assignee_name' => "{$user->first_name} {$user->last_name}", 'role' => $user->role?->role_name]
+        );
+
         return response()->json([
             'message'  => "{$user->first_name} {$user->last_name} assigned.",
             'assignee' => [
@@ -90,10 +99,21 @@ class LeadAssignmentController extends Controller
 
     // ── Unassign a user ───────────────────────────────────────────────────────
 
-    public function destroy(int $leadId, int $userId): JsonResponse
+    public function destroy(Request $request, int $leadId, int $userId): JsonResponse
     {
         $lead = Lead::findOrFail($leadId);
+        $user = User::find($userId);
         $lead->assignedUsers()->detach($userId);
+
+        if ($user) {
+            LeadAction::log(
+                $lead->id,
+                LeadAction::AGENT_UNASSIGNED,
+                "{$user->first_name} {$user->last_name} removed from this lead",
+                $request->user()->id,
+                ['assignee_id' => $user->id, 'assignee_name' => "{$user->first_name} {$user->last_name}"]
+            );
+        }
 
         return response()->json(['message' => 'User unassigned.']);
     }

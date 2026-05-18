@@ -112,11 +112,14 @@ class PortalController extends Controller
     /**
      * GET /api/customer/events/{id}/certificate
      *
-     * Certificate of Insurance download stub.
-     * Returns a placeholder response until the PDF generation pipeline is wired.
+     * Returns the customer's Certificate of Insurance (COI) for a lead.
+     *
+     * If the COI has already been generated, streams the PDF.
+     * If it hasn't been generated yet (e.g. job still queued), returns a 202
+     * so the frontend can show a "processing" state and poll later.
      * Access is restricted to the owning customer.
      */
-    public function certificate(Request $request, int $id): JsonResponse
+    public function certificate(Request $request, int $id): \Illuminate\Http\Response|JsonResponse
     {
         $user    = $request->user();
         $leadIds = $this->customerLeadIds($user);
@@ -126,12 +129,39 @@ class PortalController extends Controller
                     ->where('submission_status', 'payment_received')
                     ->firstOrFail();
 
-        // TODO: Replace with real PDF URL once the PDF generation pipeline is wired up.
-        return response()->json([
-            'message'     => 'Certificate generation is coming soon. Contact support@onedayevent.com for your COI.',
-            'lead_id'     => $lead->id,
-            'event_name'  => $lead->event_name,
-            'event_date'  => $lead->event_date?->toDateString(),
+        // Look up the most-recent COI file in lead_files (visible to customer)
+        $file = $lead->files()
+                     ->where('category', 'Certificate')
+                     ->where('send_to_customer', true)
+                     ->latest()
+                     ->first();
+
+        // Also check coi_pdf_path column as a fallback
+        $storagePath = $file?->path ?? $lead->coi_pdf_path;
+
+        if (! $storagePath) {
+            // COI not ready yet — job may still be queued
+            return response()->json([
+                'ready'      => false,
+                'message'    => 'Your Certificate of Insurance is being generated and will be emailed to you shortly. Please check back in a few minutes.',
+                'lead_id'    => $lead->id,
+                'event_name' => $lead->event_name,
+                'event_date' => $lead->event_date?->toDateString(),
+            ], 202);
+        }
+
+        $absolutePath = \Illuminate\Support\Facades\Storage::disk('local')->path($storagePath);
+
+        if (! file_exists($absolutePath)) {
+            return response()->json([
+                'ready'   => false,
+                'message' => 'Certificate file not found. Please contact support@onedayevent.com.',
+            ], 404);
+        }
+
+        return response()->file($absolutePath, [
+            'Content-Type'        => 'application/pdf',
+            'Content-Disposition' => 'inline; filename="Certificate_of_Insurance_ODE00' . $lead->id . '.pdf"',
         ]);
     }
 

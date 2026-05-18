@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import {
   Elements,
   CardNumberElement,
@@ -11,7 +11,6 @@ import {
 import { loadStripe } from '@stripe/stripe-js'
 import api from '../../lib/axios'
 import { useQuoteStore } from '../../stores/quoteStore'
-import QuoteStepLayout from './QuoteStepLayout'
 
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PK as string)
 
@@ -50,9 +49,10 @@ const STRIPE_STYLE = {
   style: {
     base: {
       fontSize: '14px',
+      lineHeight: '22px',
       color: '#262D45',
-      fontFamily: "'Nunito Sans', ui-sans-serif, sans-serif",
-      '::placeholder': { color: '#9CA3AF' },
+      fontFamily: 'inherit',
+      '::placeholder': { color: '#BBBBBB' },
     },
     invalid: { color: '#E0232C' },
   },
@@ -60,12 +60,12 @@ const STRIPE_STYLE = {
 
 // ─── Shared field styles ──────────────────────────────────────────────────────
 
-const inputStyle: React.CSSProperties = {
+const inputSt: React.CSSProperties = {
   width: '100%',
   height: 46,
-  borderRadius: 8,
-  border: '1px solid #DFDFDF',
-  padding: '0 14px',
+  borderRadius: 6,
+  border: '1px solid #D0D5DD',
+  padding: '0 12px',
   fontSize: 14,
   color: '#262D45',
   outline: 'none',
@@ -73,32 +73,122 @@ const inputStyle: React.CSSProperties = {
   background: '#fff',
 }
 
-const labelStyle: React.CSSProperties = {
+const labelSt: React.CSSProperties = {
   display: 'block',
   fontSize: 11,
   fontWeight: 700,
   color: '#697386',
-  marginBottom: 5,
+  marginBottom: 4,
   textTransform: 'uppercase' as const,
-  letterSpacing: '0.6px',
+  letterSpacing: '0.5px',
 }
 
-/** Wrapper that makes a Stripe element look like a regular input */
-function StripeWrap({ children }: { children: React.ReactNode }) {
+// Wrapper that lets a Stripe iframe render properly —
+// use padding only, never height + flex on the direct parent of a Stripe element
+const stripeBox: React.CSSProperties = {
+  border: '1px solid #D0D5DD',
+  borderRadius: 6,
+  background: '#fff',
+  padding: '12px',
+  boxSizing: 'border-box',
+  width: '100%',
+}
+
+// ─── Standalone page layout ───────────────────────────────────────────────────
+// A plain layout with no z-index layers or wave footer so that Stripe iframes
+// can receive pointer events without any CSS interference.
+
+const CHECKOUT_LABELS = ['Insured Info', 'Venue Details', 'Contact & Pay']
+
+function PaymentPageShell({ backTo, children }: { backTo: string; children: React.ReactNode }) {
+  const navigate = useNavigate()
   return (
-    <div
-      style={{
-        height: 46,
-        borderRadius: 8,
-        border: '1px solid #DFDFDF',
-        background: '#fff',
-        display: 'flex',
-        alignItems: 'center',
-        padding: '0 14px',
-        boxSizing: 'border-box',
-      }}
-    >
-      <div style={{ flex: 1 }}>{children}</div>
+    <div style={{ minHeight: '100vh', background: '#fff' }}>
+
+      {/* ── Header ──────────────────────────────────────────────────────── */}
+      <header
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '0 32px',
+          height: 65,
+          marginTop: 26,
+          marginBottom: 26,
+        }}
+      >
+        {/* Left: back arrow + logo */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <button
+            type="button"
+            onClick={() => navigate(backTo)}
+            aria-label="Go back"
+            style={{
+              width: 38, height: 38, borderRadius: '50%',
+              border: '1px solid #E3E3E3', background: '#fff',
+              cursor: 'pointer', display: 'flex',
+              alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+            }}
+          >
+            <svg width="16" height="16" fill="none" stroke="#555" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" />
+            </svg>
+          </button>
+          <Link to="/">
+            <img src="/assets/images/logo-img.svg" alt="One Day Event" style={{ height: 62, width: 'auto' }} />
+          </Link>
+        </div>
+
+        {/* Right: Save Quote + Phone */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <button
+            type="button"
+            style={{
+              lineHeight: '36px', padding: '0 18px', borderRadius: 40,
+              border: 'none', background: '#1CA0DF', color: '#fff',
+              fontSize: 13, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap',
+            }}
+          >
+            Save Quote
+          </button>
+          <a
+            href="tel:8886390093"
+            style={{
+              lineHeight: '36px', padding: '0 14px', borderRadius: 40,
+              border: '1px solid #CCCCCC', color: '#555',
+              fontSize: 13, fontWeight: 600, textDecoration: 'none', whiteSpace: 'nowrap',
+            }}
+          >
+            Phone
+          </a>
+        </div>
+      </header>
+
+      {/* ── 3-step checkout progress bar ────────────────────────────────── */}
+      <div style={{ padding: '0 32px', marginBottom: 44 }}>
+        <div style={{ display: 'flex', gap: 10 }}>
+          {CHECKOUT_LABELS.map((label, i) => (
+            <div key={label} style={{ flex: 1, textAlign: 'center' }}>
+              <div
+                style={{
+                  height: 8, borderRadius: 40, background: '#1087c3',
+                  opacity: 1,          // step 3 = all filled
+                  marginBottom: 6,
+                }}
+              />
+              <span style={{ fontSize: 11, fontWeight: 600, color: '#105778' }}>
+                {label}
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* ── Page content ────────────────────────────────────────────────── */}
+      <div style={{ maxWidth: 1000, margin: '0 auto', padding: '0 20px 60px', boxSizing: 'border-box' }}>
+        {children}
+      </div>
+
     </div>
   )
 }
@@ -119,7 +209,7 @@ function PaymentForm() {
     if (!selectedPlan) navigate('/quote/plans', { replace: true })
   }, [selectedPlan, navigate])
 
-  // ── Contact/billing fields — pre-fill from insured info when available ─────
+  // Pre-fill from insured info when available
   const [firstName,      setFirstName]      = useState(String(customerInfo.first_name      ?? customerInfo.ins_first_name ?? ''))
   const [lastName,       setLastName]       = useState(String(customerInfo.last_name       ?? customerInfo.ins_last_name  ?? ''))
   const [email,          setEmail]          = useState(String(customerInfo.email           ?? ''))
@@ -129,22 +219,21 @@ function PaymentForm() {
   const [billingState,   setBillingState]   = useState(String(customerInfo.billing_state   ?? customerInfo.ins_state     ?? params.event_state ?? ''))
   const [billingZip,     setBillingZip]     = useState(String(customerInfo.billing_zip     ?? customerInfo.ins_zip       ?? ''))
 
-  const [agreed,         setAgreed]         = useState(false)
-  const [termsExpanded,  setTermsExpanded]  = useState(false)
-  const [error,          setError]          = useState<string | null>(null)
-  const [submitting,     setSubmitting]     = useState(false)
+  const [agreed,        setAgreed]        = useState(false)
+  const [termsExpanded, setTermsExpanded] = useState(false)
+  const [error,         setError]         = useState<string | null>(null)
+  const [submitting,    setSubmitting]    = useState(false)
 
   if (!selectedPlan) return null
 
-  const premium    = selectedPlan.premium
-  const brokerFee  = selectedPlan.broker_fee
-  const total      = selectedPlan.total + (selectedPlan.extra_charge ?? 0)
-  const canSubmit  = agreed && !submitting && !!stripe && !!elements
+  const premium   = selectedPlan.premium
+  const brokerFee = selectedPlan.broker_fee
+  const total     = selectedPlan.total + (selectedPlan.extra_charge ?? 0)
+  const canSubmit = agreed && !submitting && !!stripe && !!elements
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!canSubmit) return
-
     setError(null)
     setSubmitting(true)
 
@@ -157,8 +246,8 @@ function PaymentForm() {
         card: cardEl,
         billing_details: {
           name:  `${firstName} ${lastName}`.trim(),
-          email: email    || undefined,
-          phone: phone    || undefined,
+          email: email          || undefined,
+          phone: phone          || undefined,
           address: {
             line1:       billingAddress || undefined,
             city:        billingCity    || undefined,
@@ -169,226 +258,137 @@ function PaymentForm() {
         },
       })
 
-      if (stripeErr) {
-        setError(stripeErr.message ?? 'Card error. Please try again.')
-        return
-      }
+      if (stripeErr) { setError(stripeErr.message ?? 'Card error.'); return }
 
-      // Persist contact info so it's available in the confirmation
       setCustomerInfo({ first_name: firstName, last_name: lastName, email, phone })
 
       const payload = {
-        // Plan
-        rate_id:        selectedPlan.rate_id,
-        carrier:        selectedPlan.carrier,
-        premium:        selectedPlan.premium,
-        broker_fee:     selectedPlan.broker_fee,
-        processing_fee: selectedPlan.processing_fee,
-        extra_charge:   selectedPlan.extra_charge ?? 0,
-        total:          selectedPlan.total,
-        min_limit:      selectedPlan.min_limit,
-        max_limit:      selectedPlan.max_limit,
-        // Event params
-        event_type_id:       params.eventType,
-        event_type_name:     params.eventTypeName,
-        event_dates:         params.eventDates,
-        event_state:         params.event_state,
-        persons:             params.number_of_persons,
-        noha:                params.noha            ?? 0,
-        w_o_s:               params.w_o_s           ?? 0,
-        p_a_n_c_b:           params.p_a_n_c_b       ?? 0,
-        host_liquor:         params.host_liquor      ?? 0,
-        liquor:              params.liquor           ?? 0,
-        additional_insureds: params.additional_insureds ?? 0,
-        private_residence:   params.privateResidence  ?? 0,
-        is_venue:            params.isSetVenue        ?? 0,
-        timezone:            params.timezone          ?? '',
-        // Contact & billing
-        first_name:      firstName,
-        last_name:       lastName,
-        email,
-        phone,
-        billing_address: billingAddress,
-        billing_city:    billingCity,
-        billing_state:   billingState,
-        billing_zip:     billingZip,
-        // Previously saved (insured info + venue details)
+        rate_id: selectedPlan.rate_id,         carrier: selectedPlan.carrier,
+        premium: selectedPlan.premium,         broker_fee: selectedPlan.broker_fee,
+        processing_fee: selectedPlan.processing_fee, extra_charge: selectedPlan.extra_charge ?? 0,
+        total: selectedPlan.total,             min_limit: selectedPlan.min_limit,
+        max_limit: selectedPlan.max_limit,
+        event_type_id: params.eventType,       event_type_name: params.eventTypeName,
+        event_dates: params.eventDates,        event_state: params.event_state,
+        persons: params.number_of_persons,
+        noha: params.noha ?? 0,                w_o_s: params.w_o_s ?? 0,
+        p_a_n_c_b: params.p_a_n_c_b ?? 0,     host_liquor: params.host_liquor ?? 0,
+        liquor: params.liquor ?? 0,            additional_insureds: params.additional_insureds ?? 0,
+        private_residence: params.privateResidence ?? 0, is_venue: params.isSetVenue ?? 0,
+        timezone: params.timezone ?? '',
+        first_name: firstName,   last_name: lastName,   email,   phone,
+        billing_address: billingAddress, billing_city: billingCity,
+        billing_state: billingState,     billing_zip: billingZip,
         ...customerInfo,
-        // Stripe
         stripe_payment_method_id: paymentMethod!.id,
       }
 
-      const res = await api.post<{ lead_number: number; message: string }>('/leads', payload)
+      const res = await api.post<{ lead_number: number }>('/leads', payload)
       reset()
       navigate(`/quote/confirmation/${res.data.lead_number}`, { replace: true })
 
     } catch (err: unknown) {
       setError(
         (err as { response?: { data?: { message?: string } } })?.response?.data?.message
-        ?? 'An unexpected error occurred. Please try again.',
+          ?? 'An unexpected error occurred. Please try again.',
       )
     } finally {
       setSubmitting(false)
     }
   }
 
-  // ── Policy detail rows ─────────────────────────────────────────────────────
+  // Policy detail rows from selected plan
   const policyRows: { label: string; value: string }[] = [
     ...(selectedPlan.limits.length > 0
       ? [{ label: 'LIMITS', value: `$${selectedPlan.min_limit} million per occurrence / $${selectedPlan.max_limit} million aggregate` }]
       : []),
     ...selectedPlan.limits.map((l) => ({ label: l.gl_limit_type.toUpperCase(), value: l.gl_limit })),
-    { label: 'GUESTS',              value: String(params.number_of_persons ?? 0) },
+    { label: 'GUESTS',              value: String(params.number_of_persons  ?? 0) },
     { label: 'ADDITIONAL INSUREDS', value: String(params.additional_insureds ?? 0) },
   ]
 
   return (
-    <QuoteStepLayout
-      step={10}
-      checkoutStep={3}
-      wide
-      backTo="/quote/venue"
-    >
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: '1fr 300px',
-          gap: 28,
-          alignItems: 'start',
-        }}
-      >
+    <PaymentPageShell backTo="/quote/venue">
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: 28, alignItems: 'start' }}>
 
-        {/* ══ LEFT: payment form + T&C ══════════════════════════════════════ */}
+        {/* ══ LEFT: form ══════════════════════════════════════════════════ */}
         <div>
           <form onSubmit={handleSubmit} noValidate>
 
-            {/* ── Title ─────────────────────────────────────────────────── */}
-            <h2
-              style={{
-                fontSize: 20,
-                fontWeight: 800,
-                color: '#262D45',
-                marginBottom: 20,
-              }}
-            >
+            <h2 style={{ fontSize: 20, fontWeight: 800, color: '#262D45', marginBottom: 20 }}>
               Payment Information
             </h2>
 
-            {/* ── First / Last name ─────────────────────────────────────── */}
+            {/* First / Last */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14 }}>
               <div>
-                <label style={labelStyle}>First Name</label>
-                <input
-                  type="text"
-                  placeholder="First Name"
-                  value={firstName}
-                  onChange={(e) => setFirstName(e.target.value)}
-                  style={inputStyle}
-                />
+                <label style={labelSt}>First Name</label>
+                <input type="text" placeholder="First Name" value={firstName} onChange={(e) => setFirstName(e.target.value)} style={inputSt} />
               </div>
               <div>
-                <label style={labelStyle}>Last Name</label>
-                <input
-                  type="text"
-                  placeholder="Last Name"
-                  value={lastName}
-                  onChange={(e) => setLastName(e.target.value)}
-                  style={inputStyle}
-                />
+                <label style={labelSt}>Last Name</label>
+                <input type="text" placeholder="Last Name" value={lastName} onChange={(e) => setLastName(e.target.value)} style={inputSt} />
               </div>
             </div>
 
-            {/* ── Email / Phone ─────────────────────────────────────────── */}
+            {/* Email / Phone */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14 }}>
               <div>
-                <label style={labelStyle}>Email</label>
-                <input
-                  type="email"
-                  placeholder="Email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  style={inputStyle}
-                />
+                <label style={labelSt}>Email</label>
+                <input type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} style={inputSt} />
               </div>
               <div>
-                <label style={labelStyle}>Phone</label>
-                <input
-                  type="tel"
-                  placeholder="Phone"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  style={inputStyle}
-                />
+                <label style={labelSt}>Phone</label>
+                <input type="tel" placeholder="Phone" value={phone} onChange={(e) => setPhone(e.target.value)} style={inputSt} />
               </div>
             </div>
 
-            {/* ── Card Number ───────────────────────────────────────────── */}
+            {/* Card Number */}
             <div style={{ marginBottom: 14 }}>
-              <label style={labelStyle}>Credit Card Number</label>
-              <StripeWrap>
-                <CardNumberElement options={STRIPE_STYLE} />
-              </StripeWrap>
+              <label style={labelSt}>Credit Card Number</label>
+              <div style={stripeBox}>
+                <CardNumberElement options={{ ...STRIPE_STYLE, showIcon: true }} />
+              </div>
             </div>
 
-            {/* ── Expiry / CVC ──────────────────────────────────────────── */}
+            {/* Exp Mon | Exp Yea | CVC */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 14 }}>
               <div style={{ gridColumn: '1 / 3' }}>
-                <label style={labelStyle}>Exp. Date (MM / YY)</label>
-                <StripeWrap>
+                <label style={labelSt}>Exp Mon / Exp Yea</label>
+                <div style={stripeBox}>
                   <CardExpiryElement options={STRIPE_STYLE} />
-                </StripeWrap>
+                </div>
               </div>
               <div>
-                <label style={labelStyle}>CVC</label>
-                <StripeWrap>
+                <label style={labelSt}>CVC</label>
+                <div style={stripeBox}>
                   <CardCvcElement options={STRIPE_STYLE} />
-                </StripeWrap>
+                </div>
               </div>
             </div>
 
-            {/* ── Billing Address ───────────────────────────────────────── */}
+            {/* Billing Address */}
             <div style={{ marginBottom: 14 }}>
-              <label style={labelStyle}>Billing Address</label>
-              <input
-                type="text"
-                placeholder="Billing Address"
-                value={billingAddress}
-                onChange={(e) => setBillingAddress(e.target.value)}
-                style={inputStyle}
-              />
+              <label style={labelSt}>Billing Address</label>
+              <input type="text" placeholder="Billing Address" value={billingAddress} onChange={(e) => setBillingAddress(e.target.value)} style={inputSt} />
             </div>
 
-            {/* ── City / State ──────────────────────────────────────────── */}
+            {/* City / State */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14 }}>
               <div>
-                <label style={labelStyle}>City</label>
-                <input
-                  type="text"
-                  placeholder="City"
-                  value={billingCity}
-                  onChange={(e) => setBillingCity(e.target.value)}
-                  style={inputStyle}
-                />
+                <label style={labelSt}>City</label>
+                <input type="text" placeholder="City" value={billingCity} onChange={(e) => setBillingCity(e.target.value)} style={inputSt} />
               </div>
               <div>
-                <label style={labelStyle}>Select State</label>
+                <label style={labelSt}>Select State</label>
                 <div style={{ position: 'relative' }}>
                   <select
                     value={billingState}
                     onChange={(e) => setBillingState(e.target.value)}
-                    style={{
-                      ...inputStyle,
-                      color: billingState ? '#262D45' : '#9CA3AF',
-                      appearance: 'none',
-                      WebkitAppearance: 'none',
-                      cursor: 'pointer',
-                      paddingRight: 34,
-                    }}
+                    style={{ ...inputSt, color: billingState ? '#262D45' : '#9CA3AF', appearance: 'none', WebkitAppearance: 'none', cursor: 'pointer', paddingRight: 34 }}
                   >
                     <option value="">Select State</option>
-                    {US_STATES.map((s) => (
-                      <option key={s} value={s}>{s}</option>
-                    ))}
+                    {US_STATES.map((s) => <option key={s} value={s}>{s}</option>)}
                   </select>
                   <div style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }}>
                     <svg width="14" height="14" fill="none" stroke="#9CA3AF" viewBox="0 0 24 24">
@@ -399,74 +399,49 @@ function PaymentForm() {
               </div>
             </div>
 
-            {/* ── Zip ───────────────────────────────────────────────────── */}
+            {/* Zip */}
             <div style={{ marginBottom: 20 }}>
-              <label style={labelStyle}>Zip</label>
+              <label style={labelSt}>Zip</label>
               <input
-                type="text"
-                placeholder="Zip"
-                value={billingZip}
+                type="text" placeholder="Zip" value={billingZip}
                 onChange={(e) => setBillingZip(e.target.value.replace(/\D/g, '').slice(0, 5))}
-                maxLength={5}
-                style={{ ...inputStyle, width: '50%' }}
+                maxLength={5} style={{ ...inputSt, width: '50%' }}
               />
             </div>
 
-            {/* ── Terms checkbox ────────────────────────────────────────── */}
-            <label
-              style={{
-                display: 'flex',
-                alignItems: 'flex-start',
-                gap: 10,
-                marginBottom: 18,
-                cursor: 'pointer',
-              }}
-            >
-              <input
-                type="checkbox"
-                checked={agreed}
-                onChange={(e) => setAgreed(e.target.checked)}
-                style={{ marginTop: 2, width: 16, height: 16, cursor: 'pointer', flexShrink: 0 }}
-              />
+            {/* Terms checkbox */}
+            <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: 18, cursor: 'pointer' }}>
+              <input type="checkbox" checked={agreed} onChange={(e) => setAgreed(e.target.checked)} style={{ marginTop: 3, width: 15, height: 15, cursor: 'pointer', flexShrink: 0 }} />
               <span style={{ fontSize: 13, color: '#505458', lineHeight: '20px' }}>
-                I agree to the terms and conditions below
+                I agree to the{' '}
+                <a
+                  href="#terms-section"
+                  onClick={(e) => { e.preventDefault(); document.getElementById('terms-section')?.scrollIntoView({ behavior: 'smooth' }) }}
+                  style={{ color: '#1CA0DF', textDecoration: 'underline' }}
+                >
+                  terms and conditions
+                </a>
+                {' '}below
               </span>
             </label>
 
-            {/* ── Error ─────────────────────────────────────────────────── */}
+            {/* Error */}
             {error && (
-              <div
-                style={{
-                  background: '#FEF2F2',
-                  border: '1px solid #FECACA',
-                  borderRadius: 8,
-                  padding: '10px 14px',
-                  marginBottom: 14,
-                  fontSize: 13,
-                  color: '#B91C1C',
-                  lineHeight: '20px',
-                }}
-              >
+              <div style={{ background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: 6, padding: '10px 14px', marginBottom: 14, fontSize: 13, color: '#B91C1C' }}>
                 {error}
               </div>
             )}
 
-            {/* ── Submit ────────────────────────────────────────────────── */}
+            {/* Submit */}
             <button
               type="submit"
               disabled={!canSubmit}
               style={{
-                width: '100%',
-                height: 48,
-                borderRadius: 8,
-                border: 'none',
+                width: '100%', height: 48, borderRadius: 6, border: 'none',
                 background: canSubmit ? '#1CA0DF' : '#D5D9E6',
-                color: '#fff',
-                fontSize: 15,
-                fontWeight: 700,
+                color: '#fff', fontSize: 15, fontWeight: 700,
                 cursor: canSubmit ? 'pointer' : 'not-allowed',
                 transition: 'background-color 0.15s',
-                letterSpacing: '0.3px',
               }}
             >
               {submitting ? 'Processing…' : 'Submit'}
@@ -474,26 +449,16 @@ function PaymentForm() {
 
           </form>
 
-          {/* ── Terms & Conditions text ──────────────────────────────────── */}
-          <div style={{ marginTop: 28, paddingTop: 20, borderTop: '1px solid #E3E3E3' }}>
-            <h3 style={{ fontSize: 15, fontWeight: 700, color: '#262D45', marginBottom: 10 }}>
-              Terms and Conditions
-            </h3>
+          {/* Terms & Conditions */}
+          <div id="terms-section" style={{ marginTop: 28, paddingTop: 20, borderTop: '1px solid #E3E3E3' }}>
+            <h3 style={{ fontSize: 15, fontWeight: 700, color: '#262D45', marginBottom: 10 }}>Terms and Conditions</h3>
             <p style={{ fontSize: 12, color: '#505458', lineHeight: '20px' }}>
-              {termsExpanded ? TERMS_TEXT : TERMS_TEXT.slice(0, 220) + '…'}
+              {termsExpanded ? TERMS_TEXT : TERMS_TEXT.slice(0, 240) + '…'}
               {' '}
               <button
                 type="button"
                 onClick={() => setTermsExpanded((v) => !v)}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  padding: 0,
-                  color: '#1CA0DF',
-                  fontWeight: 600,
-                  fontSize: 12,
-                  cursor: 'pointer',
-                }}
+                style={{ background: 'none', border: 'none', padding: 0, color: '#1CA0DF', fontWeight: 600, fontSize: 12, cursor: 'pointer' }}
               >
                 {termsExpanded ? 'Read less' : 'Read more'}
               </button>
@@ -501,131 +466,53 @@ function PaymentForm() {
           </div>
         </div>
 
-        {/* ══ RIGHT: Price + Policy Details ═════════════════════════════════ */}
+        {/* ══ RIGHT: Price + Policy Details ═══════════════════════════════ */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
 
-          {/* ── Price card ────────────────────────────────────────────────── */}
-          <div
-            style={{
-              background: '#fff',
-              border: '1px solid #E3E3E3',
-              borderRadius: 10,
-              overflow: 'hidden',
-            }}
-          >
+          {/* Price card */}
+          <div style={{ background: '#fff', border: '1px solid #E3E3E3', borderRadius: 10, overflow: 'hidden' }}>
             <div style={{ background: '#F7F8FA', padding: '10px 16px', borderBottom: '1px solid #E3E3E3' }}>
               <span style={{ fontSize: 13, fontWeight: 700, color: '#262D45' }}>Price</span>
             </div>
-            <div style={{ padding: '4px 0' }}>
-              {/* Premium */}
-              <div
-                style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  padding: '8px 16px',
-                  borderBottom: '1px solid #F0F0F0',
-                }}
-              >
-                <span style={{ fontSize: 10, fontWeight: 700, color: '#797979', textTransform: 'uppercase', letterSpacing: '0.6px' }}>
-                  PREMIUM
-                </span>
-                <span style={{ fontSize: 14, fontWeight: 600, color: '#262D45' }}>{premium}</span>
-              </div>
-              {/* Broker fee */}
-              <div
-                style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  padding: '8px 16px',
-                  borderBottom: '1px solid #F0F0F0',
-                }}
-              >
-                <span style={{ fontSize: 10, fontWeight: 700, color: '#797979', textTransform: 'uppercase', letterSpacing: '0.6px' }}>
-                  BROKER FEE
-                </span>
-                <span style={{ fontSize: 14, fontWeight: 600, color: '#262D45' }}>{brokerFee}</span>
-              </div>
-              {/* Total */}
-              <div
-                style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  padding: '10px 16px',
-                }}
-              >
-                <span style={{ fontSize: 10, fontWeight: 700, color: '#797979', textTransform: 'uppercase', letterSpacing: '0.6px' }}>
-                  TOTAL
-                </span>
+            <div>
+              {[
+                { label: 'PREMIUM',    value: String(premium)  },
+                { label: 'BROKER FEE', value: String(brokerFee) },
+              ].map((row) => (
+                <div key={row.label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 16px', borderBottom: '1px solid #F0F0F0' }}>
+                  <span style={{ fontSize: 10, fontWeight: 700, color: '#797979', textTransform: 'uppercase', letterSpacing: '0.6px' }}>{row.label}</span>
+                  <span style={{ fontSize: 14, fontWeight: 600, color: '#262D45' }}>{row.value}</span>
+                </div>
+              ))}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 16px' }}>
+                <span style={{ fontSize: 10, fontWeight: 700, color: '#797979', textTransform: 'uppercase', letterSpacing: '0.6px' }}>TOTAL</span>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{ fontSize: 18, fontWeight: 900, color: '#262D45' }}>
-                    {Math.round(total)}
-                  </span>
-                  <span
-                    style={{
-                      background: '#1CA0DF',
-                      borderRadius: 4,
-                      padding: '2px 6px',
-                      fontSize: 10,
-                      fontWeight: 700,
-                      color: '#fff',
-                      letterSpacing: '0.4px',
-                    }}
-                  >
-                    USD
-                  </span>
+                  <span style={{ fontSize: 18, fontWeight: 900, color: '#262D45' }}>{Math.round(total)}</span>
+                  <span style={{ background: '#1CA0DF', borderRadius: 4, padding: '2px 6px', fontSize: 10, fontWeight: 700, color: '#fff' }}>USD</span>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* ── Policy Details card ───────────────────────────────────────── */}
-          <div
-            style={{
-              background: '#fff',
-              border: '1px solid #E3E3E3',
-              borderRadius: 10,
-              overflow: 'hidden',
-            }}
-          >
+          {/* Policy Details card */}
+          <div style={{ background: '#fff', border: '1px solid #E3E3E3', borderRadius: 10, overflow: 'hidden' }}>
             <div style={{ background: '#F7F8FA', padding: '10px 16px', borderBottom: '1px solid #E3E3E3' }}>
               <span style={{ fontSize: 13, fontWeight: 700, color: '#262D45' }}>Policy Details</span>
             </div>
-            <div style={{ padding: '4px 0' }}>
+            <div>
               {policyRows.map((row, i) => (
                 <div
                   key={i}
                   style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'flex-start',
-                    gap: 8,
-                    padding: '7px 16px',
+                    display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start',
+                    gap: 8, padding: '7px 16px',
                     borderBottom: i < policyRows.length - 1 ? '1px solid #F0F0F0' : 'none',
                   }}
                 >
-                  <span
-                    style={{
-                      fontSize: 10,
-                      fontWeight: 700,
-                      color: '#797979',
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.5px',
-                      flexShrink: 0,
-                    }}
-                  >
+                  <span style={{ fontSize: 10, fontWeight: 700, color: '#797979', textTransform: 'uppercase', letterSpacing: '0.5px', flexShrink: 0 }}>
                     {row.label}
                   </span>
-                  <span
-                    style={{
-                      fontSize: 12,
-                      fontWeight: 600,
-                      color: row.label === 'LIMITS' ? '#1CA0DF' : '#262D45',
-                      textAlign: 'right',
-                    }}
-                  >
+                  <span style={{ fontSize: 12, fontWeight: 600, color: row.label === 'LIMITS' ? '#1CA0DF' : '#262D45', textAlign: 'right' }}>
                     {row.value}
                   </span>
                 </div>
@@ -635,7 +522,7 @@ function PaymentForm() {
 
         </div>
       </div>
-    </QuoteStepLayout>
+    </PaymentPageShell>
   )
 }
 

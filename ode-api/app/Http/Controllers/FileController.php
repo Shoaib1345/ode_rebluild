@@ -7,6 +7,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Storage;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
@@ -38,7 +39,7 @@ class FileController extends Controller
         'cois'     => 'coi-{id}.pdf',
     ];
 
-    public function download(string $category, int $id): Response|RedirectResponse|StreamedResponse|JsonResponse
+    public function download(string $category, int $id): Response|RedirectResponse|StreamedResponse|BinaryFileResponse|JsonResponse
     {
         if (! array_key_exists($category, self::CATEGORY_MAP)) {
             return response()->json(['message' => 'Invalid file category.'], 404);
@@ -59,22 +60,28 @@ class FileController extends Controller
 
         $disk = config('filesystems.default', 'local');
 
-        if (! Storage::disk($disk)->exists($path)) {
-            return response()->json(['message' => 'File not found in storage.'], 404);
-        }
-
         $filename = str_replace('{id}', $id, self::FILENAME_MAP[$category]);
 
         // S3 — redirect to presigned URL (7-day expiry)
         if ($disk === 's3') {
+            if (! Storage::disk('s3')->exists($path)) {
+                return response()->json(['message' => 'File not found in storage.'], 404);
+            }
             $url = Storage::disk('s3')->temporaryUrl($path, now()->addDays(7));
             return redirect()->away($url);
         }
 
-        // Local disk — stream directly
-        return Storage::disk($disk)->response($path, $filename, [
-            'Content-Type'        => 'application/pdf',
-            'Content-Disposition' => "attachment; filename=\"{$filename}\"",
+        // Local disk — files are written to storage/app/{path} via storage_path().
+        // We bypass the Storage facade (whose local-disk root may differ) and check
+        // the absolute path directly so nothing breaks if the disk root changes.
+        $absolutePath = storage_path('app/' . $path);
+
+        if (! file_exists($absolutePath)) {
+            return response()->json(['message' => 'File not found in storage.'], 404);
+        }
+
+        return response()->download($absolutePath, $filename, [
+            'Content-Type' => 'application/pdf',
         ]);
     }
 }
