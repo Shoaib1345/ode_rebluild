@@ -24,7 +24,7 @@ use Illuminate\Support\Facades\Log;
  * └───────────┴─────────────────────────────────────────────┘
  *
  * W9 requirement: commissions accrue regardless of W9 status.
- * The W9 gate only controls *visibility* in portal UIs (Chunk 32).
+ * The W9 gate only controls *visibility* in portal UIs.
  */
 class CommissionService
 {

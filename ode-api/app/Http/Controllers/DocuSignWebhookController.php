@@ -54,7 +54,7 @@ class DocuSignWebhookController extends Controller
                 'message' => "DocuSign envelope completed (signed): {$envelopeId}",
             ]);
 
-            // TODO (Chunk 39 EmailService): trigger "fully executed policy" email
+            // TODO: trigger "fully executed policy" email via EmailService
         }
 
         $record->save();
