@@ -2,16 +2,16 @@ import { lazy, Suspense } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import ProtectedRoute from '../components/ui/ProtectedRoute'
 
-// ─── Lazy-loaded pages (add as each chunk is built) ──────────────────────────
+// ─── Lazy-loaded pages ───────────────────────────────────────────────────────
 
 // Public
 const HomePage        = lazy(() => import('../pages/home/HomePage'))
 
-// Auth (Chunk 9)
+// Auth
 const LoginPage       = lazy(() => import('../pages/auth/LoginPage'))
 const RegisterPage    = lazy(() => import('../pages/auth/RegisterPage'))
 
-// Quote Wizard (Chunks 11–15)
+// Quote Wizard
 const EventTypePage        = lazy(() => import('../pages/quote/EventTypePage'))
 const VendorOrHostPage     = lazy(() => import('../pages/quote/VendorOrHostPage'))
 const VendorActivityPage   = lazy(() => import('../pages/quote/VendorActivityPage'))
@@ -29,14 +29,14 @@ const QuoteInfoPage        = lazy(() => import('../pages/quote/QuoteInfoPage'))
 const QuotePaymentPage     = lazy(() => import('../pages/quote/QuotePaymentPage'))
 const QuoteConfirmationPage = lazy(() => import('../pages/quote/QuoteConfirmationPage'))
 
-// Quote Resume (Chunk 44)
+// Quote Resume
 const QuoteResumePage  = lazy(() => import('../pages/quote/QuoteResumePage'))
 
-// Invoice (Chunk 21)
+// Invoice
 const InvoicePayPage     = lazy(() => import('../pages/invoice/InvoicePayPage'))
 const InvoiceSuccessPage = lazy(() => import('../pages/invoice/InvoiceSuccessPage'))
 
-// Admin (Chunks 17–20)
+// Admin
 const DashboardPage       = lazy(() => import('../pages/admin/DashboardPage'))
 const LeadsPage           = lazy(() => import('../pages/admin/LeadsPage'))
 const LeadDetailPage      = lazy(() => import('../pages/admin/LeadDetailPage'))
@@ -44,14 +44,14 @@ const InvoicesPage        = lazy(() => import('../pages/admin/InvoicesPage'))
 const InvoiceCreatePage   = lazy(() => import('../pages/admin/InvoiceCreatePage'))
 const InvoiceDetailPage   = lazy(() => import('../pages/admin/InvoiceDetailPage'))
 
-// Affiliate (Chunks 22–23)
+// Affiliate
 const AffiliateSignupPage  = lazy(() => import('../pages/affiliate/AffiliateSignupPage'))
 const AffiliateDashboard   = lazy(() => import('../pages/affiliate/AffiliateDashboard'))
 
-// Partner (Chunk 24)
+// Partner
 const PartnerSignupPage    = lazy(() => import('../pages/partner/PartnerSignupPage'))
 
-// Customer Portal (Chunk 33)
+// Customer Portal
 const CustomerLayout         = lazy(() => import('../pages/customer/CustomerLayout'))
 const CustomerDashboard      = lazy(() => import('../pages/customer/CustomerDashboard'))
 const CustomerEventsPage     = lazy(() => import('../pages/customer/CustomerEventsPage'))
@@ -59,42 +59,42 @@ const CustomerInvoicesPage   = lazy(() => import('../pages/customer/CustomerInvo
 const CustomerReferralPage   = lazy(() => import('../pages/customer/CustomerReferralPage'))
 const CommissionsTab         = lazy(() => import('../components/commission/CommissionsTab'))
 
-// Agent Portal (Chunk 34)
+// Agent Portal
 const AgentLayout            = lazy(() => import('../pages/agent/AgentLayout'))
 const AgentDashboard         = lazy(() => import('../pages/agent/AgentDashboard'))
 const AgentLeadsPage         = lazy(() => import('../pages/agent/AgentLeadsPage'))
 const AgentLeadDetailPage    = lazy(() => import('../pages/agent/AgentLeadDetailPage'))
 const AgentCommissionsPage   = lazy(() => import('../pages/agent/AgentCommissionsPage'))
 
-// Planner Portal (Chunk 35)
+// Planner Portal
 const PlannerLayout          = lazy(() => import('../pages/planner/PlannerLayout'))
 const PlannerDashboard       = lazy(() => import('../pages/planner/PlannerDashboard'))
 const PlannerReferralsPage   = lazy(() => import('../pages/planner/PlannerReferralsPage'))
 const PlannerCommissionsPage = lazy(() => import('../pages/planner/PlannerCommissionsPage'))
 
-// Admin User Management (Chunk 36)
+// Admin User Management
 const AdminUsersPage      = lazy(() => import('../pages/admin/AdminUsersPage'))
 const AdminUserDetailPage = lazy(() => import('../pages/admin/AdminUserDetailPage'))
 
-// Admin Payroll (Chunk 37)
+// Admin Payroll
 const AdminPayrollPage = lazy(() => import('../pages/admin/AdminPayrollPage'))
 
-// Admin W9 Management (Chunk 38)
+// Admin W9 Management
 const AdminW9Page = lazy(() => import('../pages/admin/AdminW9Page'))
 
-// Admin Email Templates (Chunk 39)
+// Admin Email Templates
 const AdminEmailTemplatesPage    = lazy(() => import('../pages/admin/AdminEmailTemplatesPage'))
 const AdminEmailTemplateEditPage = lazy(() => import('../pages/admin/AdminEmailTemplateEditPage'))
 
-// Admin CMS Pages + Subscribers (Chunk 40)
+// Admin CMS Pages + Subscribers
 const AdminPagesPage      = lazy(() => import('../pages/admin/AdminPagesPage'))
 const AdminPageEditPage   = lazy(() => import('../pages/admin/AdminPageEditPage'))
 const AdminSubscribersPage = lazy(() => import('../pages/admin/AdminSubscribersPage'))
 
-// Admin Rate Import (Chunk 43)
+// Admin Rate Import
 const AdminRateImportPage = lazy(() => import('../pages/admin/AdminRateImportPage'))
 
-// Public pages (Chunk 26)
+// Public pages
 const PublicPage    = lazy(() => import('../pages/public/PublicPage'))
 const AboutPage     = lazy(() => import('../pages/public/AboutPage'))
 const ContactPage   = lazy(() => import('../pages/public/ContactPage'))
@@ -102,7 +102,7 @@ const FaqPage       = lazy(() => import('../pages/public/FaqPage'))
 const TermsPage     = lazy(() => import('../pages/public/TermsPage'))
 const PrivacyPage   = lazy(() => import('../pages/public/PrivacyPage'))
 
-// Blog (Chunk 27)
+// Blog
 const BlogIndexPage = lazy(() => import('../pages/public/BlogIndexPage'))
 const BlogPostPage  = lazy(() => import('../pages/public/BlogPostPage'))
 const AdminBlogPage     = lazy(() => import('../pages/admin/BlogPage'))
@@ -151,11 +151,11 @@ export default function AppRoutes() {
         <Route path="/quote/confirmation/:leadNumber" element={<QuoteConfirmationPage />} />
         <Route path="/quote/resume/:token"            element={<QuoteResumePage />} />
 
-        {/* ── Invoice (Chunk 21) ───────────────────────────────────────── */}
+        {/* ── Invoice ──────────────────────────────────────────────────── */}
         <Route path="/invoice/:encodeId"         element={<InvoicePayPage />} />
         <Route path="/invoice/:encodeId/success" element={<InvoiceSuccessPage />} />
 
-        {/* ── Admin (Chunks 17–20) ──────────────────────────────────────── */}
+        {/* ── Admin ─────────────────────────────────────────────────────── */}
         <Route path="/admin"                    element={<ProtectedRoute maxLevel={2}><DashboardPage /></ProtectedRoute>} />
         <Route path="/admin/leads"              element={<ProtectedRoute maxLevel={2}><LeadsPage /></ProtectedRoute>} />
         <Route path="/admin/leads/:id"          element={<ProtectedRoute maxLevel={2}><LeadDetailPage /></ProtectedRoute>} />
@@ -178,14 +178,14 @@ export default function AppRoutes() {
         <Route path="/admin/subscribers"           element={<ProtectedRoute maxLevel={2}><AdminSubscribersPage /></ProtectedRoute>} />
         <Route path="/admin/rate-import"           element={<ProtectedRoute maxLevel={1}><AdminRateImportPage /></ProtectedRoute>} />
 
-        {/* ── Affiliate (Chunks 22–23) ─────────────────────────────────── */}
+        {/* ── Affiliate ────────────────────────────────────────────────── */}
         <Route path="/affiliate-signup" element={<AffiliateSignupPage />} />
         <Route path="/affiliate" element={<ProtectedRoute exactLevel={6}><AffiliateDashboard /></ProtectedRoute>} />
 
-        {/* ── Partner / Venue / Planner (Chunk 24) ────────────────────── */}
+        {/* ── Partner / Venue / Planner ───────────────────────────────── */}
         <Route path="/partner-signup" element={<PartnerSignupPage />} />
 
-        {/* ── Customer Portal (Chunk 33) ───────────────────────────────── */}
+        {/* ── Customer Portal ──────────────────────────────────────────── */}
         <Route
           path="/customer"
           element={<ProtectedRoute exactLevel={5}><CustomerLayout /></ProtectedRoute>}
@@ -197,7 +197,7 @@ export default function AppRoutes() {
           <Route path="commissions" element={<CommissionsTab />} />
         </Route>
 
-        {/* ── Agent Portal (Chunk 34) ─────────────────────────────────── */}
+        {/* ── Agent Portal ────────────────────────────────────────────── */}
         <Route
           path="/agent"
           element={<ProtectedRoute exactLevel={7}><AgentLayout /></ProtectedRoute>}
@@ -208,7 +208,7 @@ export default function AppRoutes() {
           <Route path="commissions"    element={<AgentCommissionsPage />} />
         </Route>
 
-        {/* ── Planner Portal (Chunk 35) ───────────────────────────────── */}
+        {/* ── Planner Portal ──────────────────────────────────────────── */}
         <Route
           path="/planner"
           element={<ProtectedRoute exactLevel={8}><PlannerLayout /></ProtectedRoute>}
@@ -218,7 +218,7 @@ export default function AppRoutes() {
           <Route path="commissions"     element={<PlannerCommissionsPage />} />
         </Route>
 
-        {/* ── Public Pages (Chunk 26) ──────────────────────────────────── */}
+        {/* ── Public Pages ─────────────────────────────────────────────── */}
         <Route path="/about"          element={<AboutPage />} />
         <Route path="/contact"        element={<ContactPage />} />
         <Route path="/faq"            element={<FaqPage />} />
@@ -226,7 +226,7 @@ export default function AppRoutes() {
         <Route path="/privacy"        element={<PrivacyPage />} />
         <Route path="/pages/:slug"    element={<PublicPage />} />
 
-        {/* ── Blog (Chunk 27) ──────────────────────────────────────────── */}
+        {/* ── Blog ─────────────────────────────────────────────────────── */}
         <Route path="/blog"           element={<BlogIndexPage />} />
         <Route path="/blog/:slug"     element={<BlogPostPage />} />
 
