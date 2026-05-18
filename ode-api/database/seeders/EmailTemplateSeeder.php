@@ -11,7 +11,7 @@ use Illuminate\Database\Seeder;
  * Templates use {variableName} placeholders rendered by EmailService::render().
  * Run: php artisan db:seed --class=EmailTemplateSeeder
  *
- * Keys (per FULL-SPEC-V2.md §18.4 + Chunk 44 quote_saved):
+ * Keys (per FULL-SPEC-V2.md §18.4 plus the quote_saved template):
  *   quote_submitted     — sent when wizard completes + payment received
  *   quote_saved         — sent when customer saves quote (auto-save on email blur)
  *   payment_receipt     — payment confirmation with policy details
@@ -28,7 +28,7 @@ class EmailTemplateSeeder extends Seeder
     {
         $templates = [
 
-            // ── Quote saved (Chunk 44) ──────────────────────────────────────────
+            // ── Quote saved ─────────────────────────────────────────────────────
             [
                 'key'       => 'quote_saved',
                 'subject'   => 'Your One Day Event quote has been saved',

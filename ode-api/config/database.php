@@ -112,7 +112,7 @@ return [
             'prefix_indexes' => true,
         ],
 
-        // Legacy CodeIgniter database (crm_new) — used for data migration in Chunk 29
+        // Legacy CodeIgniter database (crm_new) — used for one-off data migration
         'legacy' => [
             'driver' => 'mysql',
             'host' => env('LEGACY_DB_HOST', '127.0.0.1'),

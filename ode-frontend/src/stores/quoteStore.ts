@@ -10,7 +10,7 @@ interface QuoteState {
   selectedPlan: QuotePlan | null
   // Step 4 — customer info (filled form data)
   customerInfo: Record<string, unknown>
-  // Chunk 44 — pending quote save/resume token
+  // Pending quote save/resume token
   pendingQuoteId: string | null
 
   setParams: (params: Partial<QuoteParams>) => void
