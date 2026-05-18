@@ -315,7 +315,7 @@ export default function InvoiceDetailPage() {
             {/* Public payment link */}
             <Section title="Payment link">
               <p className="text-xs text-gray-400 mb-2">
-                Share this link with the customer to pay online (Chunk 21).
+                Share this link with the customer to pay online.
               </p>
               <div className="rounded-lg bg-gray-50 border border-gray-200 px-3 py-2">
                 <p className="text-xs font-mono text-gray-600 break-all">/invoice/{inv.encode_id}</p>

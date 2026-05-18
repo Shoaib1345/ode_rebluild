@@ -10,7 +10,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 /**
- * Admin Lead Assignments (§13.3 section 9 / Chunk 45).
+ * Admin Lead Assignments (§13.3 section 9).
  *
  * A lead can be assigned to multiple staff/agent/planner users simultaneously.
  * The pivot table is `lead_assignment` (lead_id, user_id, timestamps).

@@ -114,7 +114,7 @@ class UserController extends Controller
      *
      * Creates a staff/affiliate/agent/planner user.
      * A random temporary password is generated; in production this would be
-     * emailed as a reset link (Chunk 39 — email automation).
+     * emailed as a reset link via the email automation service.
      */
     public function store(Request $request): JsonResponse
     {
@@ -164,7 +164,7 @@ class UserController extends Controller
 
         $user->load('role:id,role_name,access_level');
 
-        // TODO (Chunk 39): send welcome email with password reset link
+        // TODO: send welcome email with password reset link
 
         return response()->json(array_merge(
             $this->formatUser($user),

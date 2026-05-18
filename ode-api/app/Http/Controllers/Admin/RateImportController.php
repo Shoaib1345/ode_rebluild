@@ -13,7 +13,7 @@ use Illuminate\Support\Facades\Validator;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
- * Admin Rate Import (§23 / Chunk 43).
+ * Admin Rate Import (§23).
  *
  * POST /admin/rates/import          → import event_rates CSV
  * POST /admin/rates/import/gl       → import carrier_gl_limits CSV
