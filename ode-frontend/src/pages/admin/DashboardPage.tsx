@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useMutation } from '@tanstack/react-query'
 import api from '../../lib/axios'
 import AdminLayout from './AdminLayout'
 import toast from 'react-hot-toast'
@@ -57,6 +57,15 @@ interface TopCardProps {
   value:  string
   circleColor: string
   icon:   React.ReactNode
+}
+
+function ReportTile({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="bg-white rounded-xl shadow-sm border border-gray-100 px-5 py-5 flex items-center justify-between">
+      <p className="text-sm font-medium text-gray-400 uppercase tracking-wide">{label}</p>
+      <p className="text-2xl font-bold text-gray-800">{value}</p>
+    </div>
+  )
 }
 
 function TopStatCard({ label, value, circleColor, icon }: TopCardProps) {
@@ -217,10 +226,52 @@ function MonthlyRevenueChart({ data }: { data: MonthData[] }) {
 
 type Period = 'today' | 'week' | 'month'
 
+// ─── Custom report types ──────────────────────────────────────────────────────
+
+type ReportPeriod = 'today' | 'week' | 'month' | 'dates'
+
+interface CustomReport {
+  total_leads:           number
+  total_payment_leads:   number
+  total_mq_leads:        number
+  total_saved_leads:     number
+  total_tried_leads:     number
+  total_canceled_leads:  number
+  payment_broker_fee:    number
+  total_business_loss:   number
+}
+
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function DashboardPage() {
   const [gaugePeriod, setGaugePeriod] = useState<Period>('today')
+
+  // ── Custom Dashboard Figures (popup-style report) ────────────────────────
+  const [showReportPanel, setShowReportPanel] = useState(false)
+  const [startDate,       setStartDate]       = useState('')
+  const [endDate,         setEndDate]         = useState('')
+  const [customReport,    setCustomReport]    = useState<CustomReport | null>(null)
+
+  const reportMutation = useMutation({
+    mutationFn: async (params: { period: ReportPeriod; start?: string; end?: string }) => {
+      const res = await api.get<CustomReport>('/admin/stats/custom-report', { params })
+      return res.data
+    },
+    onSuccess: (data) => setCustomReport(data),
+    onError:   () => toast.error('Could not generate report.'),
+  })
+
+  const runReport = (period: ReportPeriod) => {
+    if (period === 'dates') {
+      if (!startDate || !endDate) {
+        toast.error('Pick a start and end date first.')
+        return
+      }
+      reportMutation.mutate({ period, start: startDate, end: endDate })
+    } else {
+      reportMutation.mutate({ period })
+    }
+  }
 
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey:  ['admin-stats'],
@@ -312,7 +363,13 @@ export default function DashboardPage() {
               Refresh
             </button>
             <button
-              onClick={() => toast('Custom dashboard configuration coming soon!', { icon: '📊' })}
+              onClick={() => {
+                setShowReportPanel((v) => {
+                  // closing the panel also wipes any report so default cards reappear
+                  if (v) setCustomReport(null)
+                  return !v
+                })
+              }}
               className="px-4 py-2 rounded-lg text-xs font-semibold text-white transition-colors"
               style={{ background: '#22C55E' }}
             >
@@ -320,6 +377,66 @@ export default function DashboardPage() {
             </button>
           </div>
         </div>
+
+        {/* ── Date-range / preset panel ─────────────────────────────────── */}
+        {showReportPanel && (
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 px-5 py-4 flex flex-wrap items-center gap-3">
+            <input
+              type="date"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              className="h-10 px-3 rounded-lg border border-gray-200 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#1CA0DF]"
+            />
+            <input
+              type="date"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+              className="h-10 px-3 rounded-lg border border-gray-200 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#1CA0DF]"
+            />
+            <button
+              disabled={reportMutation.isPending}
+              onClick={() => runReport('dates')}
+              className="h-10 px-5 rounded-lg text-xs font-semibold text-white bg-[#5B6CFF] hover:bg-[#4453E0] disabled:opacity-60 transition-colors"
+            >
+              {reportMutation.isPending ? 'Loading…' : 'Generate Report'}
+            </button>
+            <button
+              disabled={reportMutation.isPending}
+              onClick={() => runReport('today')}
+              className="h-10 px-5 rounded-lg text-xs font-semibold text-white bg-[#34D3EB] hover:bg-[#1FB8D0] disabled:opacity-60 transition-colors"
+            >
+              Today
+            </button>
+            <button
+              disabled={reportMutation.isPending}
+              onClick={() => runReport('week')}
+              className="h-10 px-5 rounded-lg text-xs font-semibold text-white bg-[#1CA0DF] hover:bg-[#1786BB] disabled:opacity-60 transition-colors"
+            >
+              This Week
+            </button>
+            <button
+              disabled={reportMutation.isPending}
+              onClick={() => runReport('month')}
+              className="h-10 px-5 rounded-lg text-xs font-semibold text-white bg-[#1CA0DF] hover:bg-[#1786BB] disabled:opacity-60 transition-colors"
+            >
+              This Month
+            </button>
+          </div>
+        )}
+
+        {/* ── Custom report cards (replaces default top cards while present) ── */}
+        {customReport && (
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <ReportTile label="Total Leads"     value={fmtNum(customReport.total_leads)} />
+            <ReportTile label="Payment"         value={fmtNum(customReport.total_payment_leads)} />
+            <ReportTile label="Manual"          value={fmtNum(customReport.total_mq_leads)} />
+            <ReportTile label="Saved"           value={fmtNum(customReport.total_saved_leads)} />
+            <ReportTile label="Broker Fee"      value={fmtMoney(customReport.payment_broker_fee)} />
+            <ReportTile label="Cancel"          value={fmtNum(customReport.total_canceled_leads)} />
+            <ReportTile label="Tried"           value={fmtNum(customReport.total_tried_leads)} />
+            <ReportTile label="Business Loss"   value={fmtMoney(customReport.total_business_loss)} />
+          </div>
+        )}
 
         {/* ── 4 top stat cards ──────────────────────────────────────────── */}
         {isLoading ? (
@@ -341,6 +458,7 @@ export default function DashboardPage() {
           </div>
         ) : data ? (
           <>
+          {!customReport && (
             <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
               {/* 1. Total Revenue */}
               <TopStatCard
@@ -391,6 +509,7 @@ export default function DashboardPage() {
                 }
               />
             </div>
+          )}
 
             {/* ── Two-column lower section ───────────────────────────────── */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
