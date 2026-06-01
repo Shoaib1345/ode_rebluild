@@ -536,4 +536,49 @@ class LeadController extends Controller
             'message'     => 'Payment successful. Your policy is being processed.',
         ], 201);
     }
+
+    /**
+     * POST /api/leads/manual-quote
+     * Creates a manual-quote lead (no payment) for events that need underwriting.
+     */
+    public function storeManualQuote(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            // Quote params (all optional except contact essentials)
+            'event_type_id'       => ['nullable', 'integer', 'exists:event_types,id'],
+            'event_type_name'     => ['nullable', 'string'],
+            'event_dates'         => ['nullable', 'string'],
+            'event_state'         => ['required', 'string'],
+            'persons'             => ['nullable', 'integer', 'min:1'],
+            'noha'                => ['nullable', 'boolean'],
+            'w_o_s'               => ['nullable', 'boolean'],
+            'p_a_n_c_b'           => ['nullable', 'boolean'],
+            'host_liquor'         => ['nullable', 'boolean'],
+            'liquor'              => ['nullable', 'boolean'],
+            'additional_insureds' => ['nullable', 'integer', 'min:0'],
+            'private_residence'   => ['nullable', 'boolean'],
+            'timezone'            => ['nullable', 'string'],
+            'event_name'          => ['nullable', 'string'],
+            // Contact
+            'first_name'          => ['required', 'string', 'max:100'],
+            'last_name'           => ['required', 'string', 'max:100'],
+            'email'               => ['required', 'email'],
+            'phone'               => ['required', 'string', 'max:30'],
+            // Why it was routed to manual review (for the underwriter)
+            'manual_quote_reasons'=> ['nullable', 'array'],
+            'manual_quote_reasons.*' => ['string', 'max:120'],
+            // Referral attribution
+            'referred_by_affiliate_id' => ['nullable', 'integer', 'exists:users,id'],
+            'referred_by_planner_id'   => ['nullable', 'integer', 'exists:users,id'],
+            'referred_by_customer_id'  => ['nullable', 'integer', 'exists:users,id'],
+            'affiliate_string'         => ['nullable', 'string', 'max:50'],
+        ]);
+
+        $result = $this->leadService->createManualQuote($data);
+
+        return response()->json([
+            'lead_number' => $result['lead_number'],
+            'message'     => 'Thanks! Our team is reviewing your event and will be in touch shortly.',
+        ], 201);
+    }
 }

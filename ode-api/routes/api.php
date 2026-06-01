@@ -68,6 +68,9 @@ Route::middleware('throttle:quote')->group(function () {
 // ─── Lead / Payment ──────────────────────────────────────────────────────────
 Route::post('/leads', [LeadController::class, 'store'])->middleware('throttle:payment');
 
+// ─── Manual Quote (needs underwriting — no payment) ──────────────────────────
+Route::post('/leads/manual-quote', [LeadController::class, 'storeManualQuote'])->middleware('throttle:60,1');
+
 // ─── Pending Quote Save / Resume ─────────────────────────────────────────────
 Route::post('/leads/pending',          [PendingQuoteController::class, 'save'])->middleware('throttle:60,1');
 Route::get('/quotes/pending/{token}',  [PendingQuoteController::class, 'resume']);

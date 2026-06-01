@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Jobs\GenerateCoiPdfJob;
 use App\Jobs\SendLeadConfirmationEmail;
 use App\Models\Lead;
+use App\Models\LeadAction;
 use App\Models\UsState;
 use App\Services\CommissionService;
 use Carbon\Carbon;
@@ -162,5 +163,94 @@ class LeadCreationService
             'success'     => true,
             'lead_number' => $lead->id,
         ];
+    }
+
+    /**
+     * Create a MANUAL-QUOTE lead — an event that can't be auto-bound online and
+     * needs human underwriting. No Stripe charge, no plan, no COI. Captures the
+     * gathered event + contact details with submission_status = 'mq' so it lands
+     * in the admin manual-quote queue, and records why it was routed there.
+     *
+     * Mirrors legacy ThankQuote → leads/ode_quote_ajax (manual path).
+     */
+    public function createManualQuote(array $data): array
+    {
+        $stateRow = UsState::where('abbreviation', strtoupper($data['event_state'] ?? ''))
+            ->orWhere('name', $data['event_state'] ?? '')
+            ->first();
+
+        $alcoholServed = 'none';
+        if ($data['liquor'] ?? false)            $alcoholServed = 'sold';
+        elseif ($data['host_liquor'] ?? false)   $alcoholServed = 'hosted';
+
+        $lead = Lead::create([
+            'event_type_id'      => $data['event_type_id']   ?? null,
+            'event_type_label'   => $data['event_type_name'] ?? null,
+            'event_date'         => $this->parseFirstDate($data['event_dates'] ?? ''),
+            'state_id'           => $stateRow?->id,
+            'event_state'        => strtoupper(substr($data['event_state'] ?? '', 0, 2)),
+            'event_name'         => $data['event_name'] ?? null,
+            'no_of_people'       => $data['persons'] ?? null,
+            'alcohol_served'     => $alcoholServed,
+            'waiver_sub_status'  => $data['w_o_s']     ?? false,
+            'hired_status'       => $data['noha']      ?? false,
+            'primary_basis'      => $data['p_a_n_c_b'] ?? false,
+            'additional_insured' => $data['additional_insureds'] ?? 0,
+            'private_residence'  => $data['private_residence']   ?? false,
+            'email'              => $data['email'],
+            'phone'              => $data['phone']      ?? null,
+            'first_name'         => $data['first_name'] ?? null,
+            'last_name'          => $data['last_name']  ?? null,
+            'user_timezone'      => $data['timezone']   ?? null,
+            'submission_status'  => 'mq',
+            // Referral attribution
+            'referred_by_affiliate_id' => $data['referred_by_affiliate_id'] ?? null,
+            'referred_by_planner_id'   => $data['referred_by_planner_id']   ?? null,
+            'referred_by_customer_id'  => $data['referred_by_customer_id']  ?? null,
+            'affiliate_string'         => $data['affiliate_string'] ?? null,
+        ]);
+
+        // Audit why this needs underwriting (shown in the admin lead timeline).
+        $reasons = $data['manual_quote_reasons'] ?? [];
+        $reasonText = is_array($reasons) && $reasons
+            ? implode(', ', $reasons)
+            : 'requires manual underwriting review';
+
+        LeadAction::create([
+            'lead_id'     => $lead->id,
+            'user_id'     => null,
+            'action_type' => null,
+            'message'     => "Manual quote requested — {$reasonText}.",
+            'meta'        => ['reasons' => $reasons],
+        ]);
+
+        return [
+            'success'     => true,
+            'lead_number' => $lead->id,
+        ];
+    }
+
+    /**
+     * Parse the first event date from a comma list, accepting m/d/Y, Y-m-d, or
+     * anything Carbon understands. Returns a Y-m-d string or null.
+     */
+    private function parseFirstDate(string $eventDates): ?string
+    {
+        $first = trim(explode(',', $eventDates)[0] ?? '');
+        if ($first === '') {
+            return null;
+        }
+        foreach (['m/d/Y', 'Y-m-d'] as $fmt) {
+            try {
+                return Carbon::createFromFormat($fmt, $first)->toDateString();
+            } catch (\Exception) {
+                // try next format
+            }
+        }
+        try {
+            return Carbon::parse($first)->toDateString();
+        } catch (\Exception) {
+            return null;
+        }
     }
 }
