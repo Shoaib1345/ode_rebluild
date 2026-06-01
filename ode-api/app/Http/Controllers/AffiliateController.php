@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Jobs\SendAffiliateWelcomeEmail;
 use App\Models\User;
 use App\Models\UserRole;
 use Illuminate\Http\JsonResponse;
@@ -16,8 +15,9 @@ class AffiliateController extends Controller
      * POST /api/affiliate/register
      *
      * Public — no auth required.
-     * Creates a new affiliate account (access_level 6) and issues a Sanctum token.
-     * Auto-generates a unique referral_string for the affiliate.
+     * Creates a new affiliate account (access_level 6) in a PENDING state
+     * (status = 0). An admin must approve it before the affiliate can log in.
+     * Auto-generates a unique referral_string.
      */
     public function register(Request $request): JsonResponse
     {
@@ -48,18 +48,17 @@ class AffiliateController extends Controller
             'phone'            => $data['phone'],
             'password'         => $data['password'], // hashed by cast
             'referral_string'  => $referralString,
-            'status'           => 1,
+            'status'           => 0,   // pending admin approval
             'w9_status'        => false,
         ]);
 
-        $token = $user->createToken('auth_token')->plainTextToken;
         $user->load('role');
 
-        // Queue welcome email
-        SendAffiliateWelcomeEmail::dispatch($user);
-
+        // No token is issued until an admin approves the application. The welcome
+        // email is sent on approval (see Admin\UserController::approve).
         return response()->json([
-            'user'  => [
+            'message' => 'Thanks for applying! Your affiliate account is pending approval — we\'ll email you once it\'s active.',
+            'user'    => [
                 'id'               => $user->id,
                 'first_name'       => $user->first_name,
                 'last_name'        => $user->last_name,
@@ -67,15 +66,12 @@ class AffiliateController extends Controller
                 'phone'            => $user->phone,
                 'status'           => $user->status,
                 'referral_string'  => $user->referral_string,
-                'w9_status'        => $user->w9_status,
-                'is_agency'        => $user->is_agency,
                 'role'             => [
                     'id'           => $user->role->id,
                     'role_name'    => $user->role->role_name,
                     'access_level' => $user->role->access_level,
                 ],
             ],
-            'token' => $token,
         ], 201);
     }
 }

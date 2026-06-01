@@ -1,11 +1,10 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import toast from 'react-hot-toast'
 import api from '../../lib/axios'
-import { useAuthStore } from '../../stores/authStore'
 
 // ─── Schema ───────────────────────────────────────────────────────────────────
 
@@ -104,13 +103,11 @@ function StepsIndicator({ current }: { current: 1 | 2 | 3 }) {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function AffiliateSignupPage() {
-  const navigate = useNavigate()
-  const setAuth  = useAuthStore((s) => s.setAuth)
-
   const [step, setStep]     = useState<1 | 2 | 3>(1)
   const [step1, setStep1]   = useState<Step1Data | null>(null)
   const [step2, setStep2]   = useState<Step2Data | null>(null)
   const [submitting, setSubmitting] = useState(false)
+  const [submitted, setSubmitted]   = useState(false)
   const [apiError, setApiError]     = useState<string | null>(null)
 
   // ── Step 1 form ────────────────────────────────────────────────────────
@@ -154,32 +151,11 @@ export default function AffiliateSignupPage() {
         agree_to_terms:        true,
       }
 
-      const res = await api.post<RegisterResponse>('/affiliate/register', payload)
-      const { user, token } = res.data
+      await api.post<RegisterResponse>('/affiliate/register', payload)
 
-      // Map to the User type expected by authStore
-      setAuth(
-        {
-          id:              user.id,
-          first_name:      user.first_name,
-          last_name:       user.last_name,
-          email:           user.email,
-          phone:           user.phone,
-          status:          user.status,
-          is_agency:       user.is_agency,
-          referral_string: user.referral_string,
-          w9_status:       user.w9_status,
-          role: {
-            id:           user.role.id,
-            role_name:    user.role.role_name,
-            access_level: user.role.access_level,
-          },
-        },
-        token,
-      )
-
-      toast.success('Welcome! Your affiliate account is ready.')
-      navigate('/affiliate', { replace: true })
+      // Affiliate accounts are pending admin approval — no auto-login.
+      toast.success('Application submitted!')
+      setSubmitted(true)
 
     } catch (err: unknown) {
       const error = err as { response?: { status?: number; data?: { errors?: Record<string, string[]>; message?: string } } }
@@ -199,6 +175,32 @@ export default function AffiliateSignupPage() {
     } finally {
       setSubmitting(false)
     }
+  }
+
+  if (submitted) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-[#EDF0FA] to-white flex items-center justify-center px-4 py-12">
+        <div className="w-full max-w-md bg-white rounded-2xl shadow-md px-8 py-10 text-center">
+          <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-full bg-green-100">
+            <svg className="h-7 w-7 text-green-600" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+            </svg>
+          </div>
+          <h1 className="text-2xl font-bold text-gray-800">Application received</h1>
+          <p className="mt-3 text-sm text-gray-500 leading-relaxed">
+            Thanks for applying to the One Day Event affiliate program. Your account is
+            <strong> pending approval</strong> — we&apos;ll email you once it&apos;s active,
+            and then you can log in.
+          </p>
+          <Link
+            to="/login"
+            className="mt-6 inline-block rounded-lg bg-[#1CA0DF] px-6 py-2.5 text-sm font-semibold text-white hover:bg-[#1786BB] transition-colors"
+          >
+            Go to login
+          </Link>
+        </div>
+      </div>
+    )
   }
 
   return (

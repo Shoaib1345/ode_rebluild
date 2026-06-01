@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Jobs\SendAffiliateWelcomeEmail;
 use App\Models\User;
 use App\Models\UserRole;
 use Illuminate\Http\JsonResponse;
@@ -206,6 +207,50 @@ class UserController extends Controller
         $user->load('role:id,role_name,access_level');
 
         return response()->json($this->formatUser($user->fresh(['role'])));
+    }
+
+    // ── Approve / Reject (affiliate + partner applications) ─────────────────────
+
+    /**
+     * PATCH /api/admin/users/{id}/approve
+     *
+     * Activates a pending application (status 0 → 1). Sends the affiliate
+     * welcome email once they're live so they know they can log in.
+     */
+    public function approve(int $id): JsonResponse
+    {
+        $user = User::with('role')->findOrFail($id);
+
+        if ((int) $user->status === 1) {
+            return response()->json(['message' => 'User is already active.'], 422);
+        }
+
+        $user->update(['status' => 1]);
+
+        if ($user->role && (int) $user->role->access_level === 6) {
+            SendAffiliateWelcomeEmail::dispatch($user);
+        }
+
+        return response()->json($this->formatUser($user->fresh(['role'])));
+    }
+
+    /**
+     * PATCH /api/admin/users/{id}/reject
+     *
+     * Declines a pending application and soft-deletes it.
+     */
+    public function reject(Request $request, int $id): JsonResponse
+    {
+        $user = User::findOrFail($id);
+
+        if ($user->id === $request->user()->id) {
+            return response()->json(['message' => 'You cannot reject your own account.'], 422);
+        }
+
+        $user->update(['status' => 0]);
+        $user->delete();
+
+        return response()->json(['message' => 'Application rejected.']);
     }
 
     // ── Destroy ────────────────────────────────────────────────────────────────
