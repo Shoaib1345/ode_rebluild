@@ -102,7 +102,9 @@ export default function QuoteVenuePage() {
       venue_contact_number: contactNumber,
       venue_contact_email:  contactEmail,
     })
-    navigate('/quote/payment')
+    // Collect named additional-insured parties before payment when any were requested.
+    const additionalInsureds = Number(params.additional_insureds ?? 0)
+    navigate(additionalInsureds > 0 ? '/quote/additional-insured' : '/quote/payment')
   }
 
   if (!selectedPlan) return null

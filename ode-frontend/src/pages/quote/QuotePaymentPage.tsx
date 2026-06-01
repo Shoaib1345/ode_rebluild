@@ -274,6 +274,7 @@ function PaymentForm() {
         noha: params.noha ?? 0,                w_o_s: params.w_o_s ?? 0,
         p_a_n_c_b: params.p_a_n_c_b ?? 0,     host_liquor: params.host_liquor ?? 0,
         liquor: params.liquor ?? 0,            additional_insureds: params.additional_insureds ?? 0,
+        additional_insured_details: params.additional_insured_details ?? [],
         private_residence: params.privateResidence ?? 0, is_venue: params.isSetVenue ?? 0,
         timezone: params.timezone ?? '',
         first_name: firstName,   last_name: lastName,   email,   phone,

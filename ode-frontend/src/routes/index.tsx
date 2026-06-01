@@ -24,6 +24,7 @@ const QuoteAddonsPage       = lazy(() => import('../pages/quote/QuoteAddonsPage'
 const QuoteDescriptionPage  = lazy(() => import('../pages/quote/QuoteDescriptionPage'))
 const QuotePlansPage        = lazy(() => import('../pages/quote/QuotePlansPage'))
 const QuoteManualReviewPage = lazy(() => import('../pages/quote/QuoteManualReviewPage'))
+const QuoteAdditionalInsuredPage = lazy(() => import('../pages/quote/QuoteAdditionalInsuredPage'))
 const QuoteInsuredPage      = lazy(() => import('../pages/quote/QuoteInsuredPage'))
 const QuoteVenuePage        = lazy(() => import('../pages/quote/QuoteVenuePage'))
 const QuoteInfoPage        = lazy(() => import('../pages/quote/QuoteInfoPage'))
@@ -148,6 +149,7 @@ export default function AppRoutes() {
         <Route path="/quote/manual-review" element={<QuoteManualReviewPage />} />
         <Route path="/quote/insured"       element={<QuoteInsuredPage />} />
         <Route path="/quote/venue"         element={<QuoteVenuePage />} />
+        <Route path="/quote/additional-insured" element={<QuoteAdditionalInsuredPage />} />
         <Route path="/quote/info"          element={<QuoteInfoPage />} />
         <Route path="/quote/payment"       element={<QuotePaymentPage />} />
         <Route path="/quote/confirmation/:leadNumber" element={<QuoteConfirmationPage />} />

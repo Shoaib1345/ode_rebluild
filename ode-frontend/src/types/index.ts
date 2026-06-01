@@ -93,6 +93,19 @@ export interface QuoteParams {
   // ── Vendor-specific ──────────────────────────────────────────────────────
   isVendor?: boolean               // true when "Vendor at Event" flow
   vendorActivity?: string          // Selected vendor type from VendorActivityPage
+  // ── Additional-insured party details (step 11, when count > 0) ───────────
+  additional_insured_details?: AdditionalInsured[]
+}
+
+/** A named additional-insured party (legacy ODE10A). */
+export interface AdditionalInsured {
+  name: string
+  relation: string
+  street: string
+  city: string
+  state: string
+  zip: string
+  email: string
 }
 
 // ─── Lead ────────────────────────────────────────────────────────────────────
