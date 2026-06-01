@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import api from '../../lib/axios'
 import { useQuoteStore } from '../../stores/quoteStore'
+import { shouldManualQuote } from '../../lib/manualQuote'
 import type { QuotePlan, QuotePlans, PolicyLimit } from '../../types'
 import QuoteLayout from './QuoteLayout'
 
@@ -247,8 +248,11 @@ export default function QuotePlansPage() {
   useEffect(() => {
     if (!params.eventType || !params.eventDates) {
       navigate('/onedayevent', { replace: true })
+    } else if (shouldManualQuote(params)) {
+      // Defensive: higher-risk events never see online plans.
+      navigate('/quote/manual-review', { replace: true })
     }
-  }, [params.eventType, params.eventDates, navigate])
+  }, [params, navigate])
 
   const queryParams = {
     event_type:          params.eventType,

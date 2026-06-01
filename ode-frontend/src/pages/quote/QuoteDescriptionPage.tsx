@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuoteStore } from '../../stores/quoteStore'
+import { shouldManualQuote } from '../../lib/manualQuote'
 import QuoteStepLayout, { QuoteNextBtn } from './QuoteStepLayout'
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
@@ -18,8 +19,10 @@ export default function QuoteDescriptionPage() {
   const [description,  setDescription]  = useState<string>((params.event_description as string) ?? '')
 
   const handleNext = () => {
+    const next = { ...params, event_name: eventName, event_description: description }
     setParams({ event_name: eventName, event_description: description })
-    navigate('/quote/plans')
+    // Higher-risk events skip online plans and go to manual underwriting.
+    navigate(shouldManualQuote(next) ? '/quote/manual-review' : '/quote/plans')
   }
 
   if (!params.number_of_persons) return null
