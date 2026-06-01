@@ -9,6 +9,7 @@ use App\Models\UserRole;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
@@ -251,6 +252,39 @@ class UserController extends Controller
         $user->delete();
 
         return response()->json(['message' => 'Application rejected.']);
+    }
+
+    // ── Impersonate ─────────────────────────────────────────────────────────────
+
+    /**
+     * POST /api/admin/users/{id}/impersonate
+     *
+     * Issues a Sanctum token that authenticates AS the target user, for support.
+     * Cannot impersonate a super admin (privilege-escalation guard) or yourself.
+     */
+    public function impersonate(Request $request, int $id): JsonResponse
+    {
+        $target = User::with('role')->findOrFail($id);
+
+        if ($target->role && (int) $target->role->access_level === 0) {
+            return response()->json(['message' => 'You cannot impersonate a super admin.'], 403);
+        }
+        if ($target->id === $request->user()->id) {
+            return response()->json(['message' => 'You cannot impersonate yourself.'], 422);
+        }
+
+        $token = $target->createToken('impersonation', ['impersonated'])->plainTextToken;
+
+        Log::info('User impersonation', [
+            'admin_id'  => $request->user()->id,
+            'target_id' => $target->id,
+        ]);
+
+        return response()->json([
+            'token'   => $token,
+            'user'    => $this->formatUser($target),
+            'message' => "You are now impersonating {$target->first_name} {$target->last_name}.",
+        ]);
     }
 
     // ── Destroy ────────────────────────────────────────────────────────────────
