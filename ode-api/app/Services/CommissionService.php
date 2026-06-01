@@ -13,15 +13,20 @@ use Illuminate\Support\Facades\Log;
  * All four methods are IDEMPOTENT — they use firstOrCreate keyed on
  * (lead_id, type), so calling the same method twice is always safe.
  *
- * Commission rules (FULL-SPEC-V2.md §14, §15, §16, §25):
- * ┌───────────┬─────────────────────────────────────────────┐
- * │ Type      │ Formula                                     │
- * ├───────────┼─────────────────────────────────────────────┤
- * │ affiliate │ $10 flat                                    │
- * │ agent     │ (premium × pct / 100) + flat                │
- * │ planner   │ $15 flat                                    │
- * │ customer  │ $5 flat                                     │
- * └───────────┴─────────────────────────────────────────────┘
+ * Commission rules:
+ * ┌───────────┬─────────────────────────────────────────────────────────────┐
+ * │ Type      │ Formula                                                     │
+ * ├───────────┼─────────────────────────────────────────────────────────────┤
+ * │ affiliate │ per-user (premium × pct/100 + flat), else $10 flat default  │
+ * │ agent     │ (premium × pct / 100) + flat                                │
+ * │ planner   │ per-user (premium × pct/100 + flat), else $15 flat default  │
+ * │ customer  │ per-user (premium × pct/100 + flat), else $5 flat default   │
+ * └───────────┴─────────────────────────────────────────────────────────────┘
+ *
+ * Affiliate / planner / customer use the referrer's configured commission_pct /
+ * commission_flat when either is set; otherwise they fall back to the flat
+ * default. This lets admins negotiate per-affiliate rates while preserving the
+ * default amounts for everyone else.
  *
  * W9 requirement: commissions accrue regardless of W9 status.
  * The W9 gate only controls *visibility* in portal UIs.
@@ -47,19 +52,16 @@ class CommissionService
             return null;
         }
 
-        [$commission, $created] = $this->firstOrCreate(
-            $lead,
-            $user,
-            'affiliate',
-            self::AFFILIATE_AMOUNT
-        );
+        $amount = $this->referrerAmount($user, self::AFFILIATE_AMOUNT, $lead);
+
+        [$commission, $created] = $this->firstOrCreate($lead, $user, 'affiliate', $amount);
 
         if ($created) {
             Log::info('Commission accrued', [
                 'type'    => 'affiliate',
                 'user_id' => $user->id,
                 'lead_id' => $lead->id,
-                'amount'  => self::AFFILIATE_AMOUNT,
+                'amount'  => $amount,
             ]);
         }
 
@@ -132,19 +134,16 @@ class CommissionService
             return null;
         }
 
-        [$commission, $created] = $this->firstOrCreate(
-            $lead,
-            $user,
-            'planner',
-            self::PLANNER_AMOUNT
-        );
+        $amount = $this->referrerAmount($user, self::PLANNER_AMOUNT, $lead);
+
+        [$commission, $created] = $this->firstOrCreate($lead, $user, 'planner', $amount);
 
         if ($created) {
             Log::info('Commission accrued', [
                 'type'    => 'planner',
                 'user_id' => $user->id,
                 'lead_id' => $lead->id,
-                'amount'  => self::PLANNER_AMOUNT,
+                'amount'  => $amount,
             ]);
         }
 
@@ -168,19 +167,16 @@ class CommissionService
             return null;
         }
 
-        [$commission, $created] = $this->firstOrCreate(
-            $lead,
-            $user,
-            'customer',
-            self::CUSTOMER_AMOUNT
-        );
+        $amount = $this->referrerAmount($user, self::CUSTOMER_AMOUNT, $lead);
+
+        [$commission, $created] = $this->firstOrCreate($lead, $user, 'customer', $amount);
 
         if ($created) {
             Log::info('Commission accrued', [
                 'type'    => 'customer',
                 'user_id' => $user->id,
                 'lead_id' => $lead->id,
-                'amount'  => self::CUSTOMER_AMOUNT,
+                'amount'  => $amount,
             ]);
         }
 
@@ -222,20 +218,38 @@ class CommissionService
 
     /**
      * Calculate agent commission: (premium × pct / 100) + flat
-     * Premium is extracted from the lead_offered_plans JSON snapshot.
      */
     private function calculateAgentAmount(Lead $lead, User $agent): float
     {
-        $premium = 0.0;
+        return round(
+            ($this->premiumOf($lead) * (float) $agent->commission_pct / 100)
+                + (float) $agent->commission_flat,
+            2
+        );
+    }
 
-        if (is_array($lead->lead_offered_plans)) {
-            $premium = (float) ($lead->lead_offered_plans['premium'] ?? 0);
+    /**
+     * Amount for affiliate / planner / customer referrers: use the user's
+     * configured rate when set, otherwise fall back to the flat default.
+     */
+    private function referrerAmount(User $user, float $defaultFlat, Lead $lead): float
+    {
+        $pct  = (float) $user->commission_pct;
+        $flat = (float) $user->commission_flat;
+
+        if ($pct > 0.0 || $flat > 0.0) {
+            return round(($this->premiumOf($lead) * $pct / 100) + $flat, 2);
         }
 
-        $pct  = (float) $agent->commission_pct;
-        $flat = (float) $agent->commission_flat;
+        return $defaultFlat;
+    }
 
-        return round(($premium * $pct / 100) + $flat, 2);
+    /** Premium from the lead's saved plan snapshot. */
+    private function premiumOf(Lead $lead): float
+    {
+        return is_array($lead->lead_offered_plans)
+            ? (float) ($lead->lead_offered_plans['premium'] ?? 0)
+            : 0.0;
     }
 
     /**

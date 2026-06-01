@@ -69,6 +69,29 @@ class CommissionServiceTest extends TestCase
         $this->assertEquals(0, Commission::where('lead_id', $lead->id)->count());
     }
 
+    public function test_accrue_affiliate_uses_configured_flat_rate(): void
+    {
+        $affiliate = $this->makeUser(6, ['commission_flat' => 25.00]);
+        $lead      = $this->makeLead(['referred_by_affiliate_id' => $affiliate->id]);
+
+        $commission = $this->service->accrueAffiliate($lead);
+
+        $this->assertEquals('25.00', $commission->amount); // configured flat overrides $10 default
+    }
+
+    public function test_accrue_affiliate_uses_configured_percentage(): void
+    {
+        $affiliate = $this->makeUser(6, ['commission_pct' => 12.00]);
+        $lead      = $this->makeLeadWithPlans([
+            'premium'                  => 200,
+            'referred_by_affiliate_id' => $affiliate->id,
+        ]);
+
+        $commission = $this->service->accrueAffiliate($lead);
+
+        $this->assertEquals('24.00', $commission->amount); // 200 × 12/100
+    }
+
     // ── Agent (% + flat) ───────────────────────────────────────────────────────
 
     public function test_accrue_agent_with_pct_and_flat(): void
