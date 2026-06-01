@@ -109,6 +109,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::middleware('admin')->prefix('admin')->group(function () {
         // Dashboard
         Route::get('/stats', [DashboardController::class, 'stats']);
+        Route::get('/stats/custom-report', [DashboardController::class, 'customReport']);
 
         // Invoices
         Route::get('/invoices',          [InvoiceController::class, 'index']);

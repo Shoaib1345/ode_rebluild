@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Lead;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class DashboardController extends Controller
@@ -113,5 +114,90 @@ class DashboardController extends Controller
             'on_hold'     => $onHoldCount,
             'daily_chart' => $dailyChart,
         ]);
+    }
+
+    /**
+     * GET /api/admin/stats/custom-report
+     *
+     * Replicates the legacy "Custom Dashboard Figures" report:
+     *   - period=today|week|month|dates   (dates requires start + end)
+     *   - returns 8 counts/figures used by the dashboard popup.
+     *
+     * Broker-fee + business-loss formulas mirror the original ode_new
+     * Leads::customeReport_ajax exactly (premium/total from lead_offered_plans).
+     */
+    public function customReport(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'period' => 'required|in:today,week,month,dates',
+            'start'  => 'required_if:period,dates|date',
+            'end'    => 'required_if:period,dates|date|after_or_equal:start',
+        ]);
+
+        $now   = Carbon::now();
+        $query = Lead::query()->select('id', 'submission_status', 'status', 'lead_offered_plans');
+
+        match ($data['period']) {
+            'today' => $query->whereDate('created_at', $now->toDateString()),
+            'week'  => $query->whereBetween('created_at', [
+                $now->copy()->startOfWeek(),
+                $now->copy()->endOfWeek(),
+            ]),
+            'month' => $query->whereBetween('created_at', [
+                $now->copy()->startOfMonth(),
+                $now->copy()->endOfMonth(),
+            ]),
+            'dates' => $query->whereBetween('created_at', [
+                Carbon::parse($data['start'])->startOfDay(),
+                Carbon::parse($data['end'])->endOfDay(),
+            ]),
+        };
+
+        $leads = $query->get();
+
+        $totals = [
+            'total_leads'           => $leads->count(),
+            'total_payment_leads'   => 0,
+            'total_mq_leads'        => 0,
+            'total_saved_leads'     => 0,
+            'total_tried_leads'     => 0,
+            'total_canceled_leads'  => 0,
+            'payment_broker_fee'    => 0.0,
+            'total_business_loss'   => 0.0,
+        ];
+
+        foreach ($leads as $lead) {
+            $plans   = $lead->lead_offered_plans ?? [];
+            $premium = (float) ($plans['premium'] ?? 0);
+            $amount  = (float) ($plans['total']   ?? 0);
+
+            if ((int) $lead->status === 0) {
+                $totals['total_canceled_leads']++;
+                $totals['total_business_loss'] += $premium + ceil($amount * 0.035) - $amount;
+                continue;
+            }
+
+            switch ($lead->submission_status) {
+                case 'payment':
+                case 'payment_received':
+                    $totals['total_payment_leads']++;
+                    $totals['payment_broker_fee'] += $amount - ($premium + ceil($amount * 0.035));
+                    break;
+                case 'mq':
+                    $totals['total_mq_leads']++;
+                    break;
+                case 'saved':
+                    $totals['total_saved_leads']++;
+                    break;
+                case 'tried':
+                    $totals['total_tried_leads']++;
+                    break;
+            }
+        }
+
+        $totals['payment_broker_fee']  = round($totals['payment_broker_fee'], 2);
+        $totals['total_business_loss'] = round($totals['total_business_loss'], 2);
+
+        return response()->json($totals);
     }
 }
