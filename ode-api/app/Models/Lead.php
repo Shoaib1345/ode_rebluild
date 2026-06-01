@@ -51,6 +51,7 @@ class Lead extends Model
         'hired_status',
         'primary_basis',
         'additional_insured',
+        'additional_insured_details',
         'lead_offered_plans',
         'email',
         'phone',
@@ -126,6 +127,7 @@ class Lead extends Model
             'is_on_hold'               => 'boolean',
             'is_priority_lead'    => 'boolean',
             'lead_offered_plans'  => 'array',
+            'additional_insured_details' => 'array',
             'pending_changes'     => 'array',
         ];
     }

@@ -56,6 +56,7 @@ class LeadCreationService
             'hired_status'         => $data['noha']      ?? false,
             'primary_basis'        => $data['p_a_n_c_b'] ?? false,
             'additional_insured'   => $data['additional_insureds'] ?? 0,
+            'additional_insured_details' => $data['additional_insured_details'] ?? null,
             'private_residence'    => $data['private_residence']   ?? false,
             'carrier'              => $data['carrier'],
             'coverage_limit'       => $coverageLimit,
