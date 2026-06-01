@@ -8,8 +8,10 @@ use App\Jobs\GenerateReceiptPdfJob;
 use App\Models\Lead;
 use App\Models\User;
 use App\Models\UserRole;
+use App\Services\CertificateService;
 use App\Services\PdfService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
 use Mockery;
@@ -218,20 +220,25 @@ class PdfGenerationTest extends TestCase
 
     public function test_generate_coi_job_stores_pdf_and_updates_lead(): void
     {
-        $lead = Lead::factory()->create();
+        Mail::fake();
 
-        $mock = Mockery::mock(PdfService::class);
-        $mock->shouldReceive('generateCoi')
-             ->once()
-             ->andReturn("cois/filled_claims/{$lead->id}-coi.pdf");
-        $this->app->instance(PdfService::class, $mock);
+        $lead = Lead::factory()->create();
+        $path = "cois/filled_claims/{$lead->id}-coi.pdf";
+
+        // The COI job now fills the PDF via CertificateService (PDFtk), not PdfService.
+        $mock = Mockery::mock(CertificateService::class);
+        $mock->shouldReceive('generate')->once()
+             ->with(Mockery::type(Lead::class))
+             ->andReturn($path);
+        $mock->shouldReceive('recordFile')->once();
+        $this->app->instance(CertificateService::class, $mock);
 
         $job = new GenerateCoiPdfJob($lead->id);
         $job->handle($mock);
 
         $this->assertDatabaseHas('leads', [
-            'id'          => $lead->id,
-            'coi_pdf_path' => "cois/filled_claims/{$lead->id}-coi.pdf",
+            'id'           => $lead->id,
+            'coi_pdf_path' => $path,
         ]);
     }
 

@@ -119,7 +119,7 @@ class PortalController extends Controller
      * so the frontend can show a "processing" state and poll later.
      * Access is restricted to the owning customer.
      */
-    public function certificate(Request $request, int $id): \Illuminate\Http\Response|JsonResponse
+    public function certificate(Request $request, int $id): \Symfony\Component\HttpFoundation\BinaryFileResponse|\Illuminate\Http\Response|JsonResponse
     {
         $user    = $request->user();
         $leadIds = $this->customerLeadIds($user);

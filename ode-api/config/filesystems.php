@@ -32,7 +32,10 @@ return [
 
         'local' => [
             'driver' => 'local',
-            'root' => storage_path('app/private'),
+            // Root at storage/app (not the Laravel 11 default app/private) so the
+            // Storage facade agrees with FileController + CertificateService +
+            // the customer COI endpoint, which all reference storage/app/... paths.
+            'root' => storage_path('app'),
             'serve' => true,
             'throw' => false,
             'report' => false,

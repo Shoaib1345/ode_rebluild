@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Models\UserRole;
 use App\Models\W9Upload;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 /**
@@ -244,19 +245,38 @@ class CustomerPortalTest extends TestCase
              ->assertJsonPath('total', 1);
     }
 
-    // ── Certificate stub ───────────────────────────────────────────────────────
+    // ── Certificate ─────────────────────────────────────────────────────────────
 
-    public function test_certificate_endpoint_returns_stub_for_owned_lead(): void
+    public function test_certificate_endpoint_returns_202_when_coi_not_ready(): void
     {
         $customer = $this->makeUser(5);
         $lead     = Lead::factory()->create([
             'user_id'           => $customer->id,
             'submission_status' => 'payment_received',
+            'coi_pdf_path'      => null,
         ]);
 
         $this->actingAs($customer)->getJson("/api/customer/events/{$lead->id}/certificate")
-             ->assertOk()
+             ->assertStatus(202)
+             ->assertJsonPath('ready', false)
              ->assertJsonPath('lead_id', $lead->id);
+    }
+
+    public function test_certificate_endpoint_streams_pdf_when_ready(): void
+    {
+        $customer = $this->makeUser(5);
+        $path     = 'cois/filled_claims/cust-coi.pdf';
+        Storage::disk('local')->put($path, '%PDF stub content');
+
+        $lead = Lead::factory()->create([
+            'user_id'           => $customer->id,
+            'submission_status' => 'payment_received',
+            'coi_pdf_path'      => $path,
+        ]);
+
+        $this->actingAs($customer)->get("/api/customer/events/{$lead->id}/certificate")
+             ->assertOk()
+             ->assertHeader('Content-Type', 'application/pdf');
     }
 
     public function test_certificate_endpoint_denies_access_to_other_customers_lead(): void

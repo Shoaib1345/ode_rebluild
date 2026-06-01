@@ -71,16 +71,13 @@ class FileController extends Controller
             return redirect()->away($url);
         }
 
-        // Local disk — files are written to storage/app/{path} via storage_path().
-        // We bypass the Storage facade (whose local-disk root may differ) and check
-        // the absolute path directly so nothing breaks if the disk root changes.
-        $absolutePath = storage_path('app/' . $path);
-
-        if (! file_exists($absolutePath)) {
+        // Local (or any non-s3) disk — stream via the Storage facade so it respects
+        // the configured disk root and works with Storage::fake() in tests.
+        if (! Storage::disk($disk)->exists($path)) {
             return response()->json(['message' => 'File not found in storage.'], 404);
         }
 
-        return response()->download($absolutePath, $filename, [
+        return Storage::disk($disk)->download($path, $filename, [
             'Content-Type' => 'application/pdf',
         ]);
     }
