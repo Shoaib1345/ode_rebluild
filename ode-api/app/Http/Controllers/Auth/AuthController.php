@@ -9,7 +9,7 @@ use App\Models\User;
 use App\Models\UserRole;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
 
 class AuthController extends Controller
 {
@@ -41,27 +41,26 @@ class AuthController extends Controller
 
     /**
      * Authenticate a user and issue a Sanctum token.
+     *
+     * Direct Hash::check (rather than Auth::attempt) skips the web guard's
+     * session creation — token-only auth doesn't need a server-side session,
+     * and skipping it saves a DB round-trip on every login.
      */
     public function login(LoginRequest $request): JsonResponse
     {
-        if (! Auth::attempt($request->only('email', 'password'))) {
+        $user = User::where('email', $request->email)->first();
+
+        if (! $user || ! Hash::check($request->password, $user->password)) {
             return response()->json([
                 'message' => 'Invalid credentials.',
             ], 401);
         }
 
-        /** @var User $user */
-        $user = Auth::user();
-
         if ($user->status !== 1) {
-            Auth::logout();
             return response()->json([
                 'message' => 'Your account is inactive. Please contact support.',
             ], 403);
         }
-
-        // Revoke all previous tokens for this user (single-session behaviour)
-        $user->tokens()->delete();
 
         $token = $user->createToken('auth_token')->plainTextToken;
 
