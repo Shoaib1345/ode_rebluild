@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>One Day Event — Concept 3: Swiss Minimal</title>
+<!--
+  Design direction: Minimalism & Swiss Style + Exaggerated Minimalism
+  Source: ui-ux-pro-max skill (Minimalism → oversized type, single accent)
+  Font:   IBM Plex Sans (Financial Trust pairing)
+  Palette: Ink #111111 / Paper #FAFAF9 / single accent ODE red #E0232C
+-->
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script>
+  tailwind.config = { theme: { extend: {
+    fontFamily: { sans: ['IBM Plex Sans','sans-serif'] },
+    colors: { ink:'#111111', paper:'#FAFAF9', accent:'#E0232C', line:'#E5E5E2', sub:'#6B6B68' },
+    borderRadius: { none:'0px' },
+  }}}
+</script>
+<style>
+  body{font-family:'IBM Plex Sans',sans-serif}
+  .giant{font-size:clamp(2.75rem,9vw,7rem);line-height:.95;letter-spacing:-0.04em;font-weight:700}
+  .rule{border-color:#E5E5E2}
+</style>
+</head>
+<body class="bg-paper text-ink antialiased">
+
+<!-- ░░ Concept banner ░░ -->
+<div class="border-b border-line text-center text-[11px] py-2 tracking-[0.2em] text-sub uppercase">
+  Design concept 3 / 3 — <span class="text-ink font-semibold">Swiss Minimal</span> — oversized type · single accent
+</div>
+
+<!-- ░░ Nav ░░ -->
+<header class="border-b border-line sticky top-0 bg-paper/95 backdrop-blur z-30">
+  <div class="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <span class="w-3 h-3 bg-accent inline-block"></span>
+      <span class="font-semibold tracking-tight">ONE DAY EVENT</span>
+    </div>
+    <nav class="hidden md:flex items-center gap-8 text-sm text-sub">
+      <a href="#" class="hover:text-ink">Coverage</a>
+      <a href="#plans" class="hover:text-ink">Plans</a>
+      <a href="#portal" class="hover:text-ink">Portal</a>
+      <a href="#" class="hover:text-ink">Contact</a>
+    </nav>
+    <a href="#plans" class="text-sm font-semibold border border-ink px-4 py-2 hover:bg-ink hover:text-paper transition-colors">Get a quote</a>
+  </div>
+</header>
+
+<!-- ░░ Hero ░░ -->
+<section class="max-w-6xl mx-auto px-6 pt-16 pb-12">
+  <div class="grid lg:grid-cols-12 gap-8 items-end">
+    <div class="lg:col-span-8">
+      <div class="text-sm text-sub mb-6 flex items-center gap-3">
+        <span class="w-8 border-t border-ink"></span> EVENT LIABILITY INSURANCE · ISSUED INSTANTLY
+      </div>
+      <h1 class="giant">
+        Insure your<br>day in <span class="text-accent">60s.</span>
+      </h1>
+    </div>
+    <div class="lg:col-span-4 lg:pb-3">
+      <p class="text-lg text-sub max-w-sm">
+        One quote. One certificate. Zero paperwork. Coverage your venue accepts —
+        priced transparently, bound in a minute.
+      </p>
+      <div class="mt-6 flex items-center gap-4">
+        <a href="#events" class="bg-accent text-paper font-semibold px-7 py-3.5">Start →</a>
+        <a href="#" class="font-semibold border-b-2 border-ink pb-0.5">888-639-0093</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- stat strip -->
+  <div class="mt-14 grid grid-cols-2 md:grid-cols-4 border-t border-line">
+    <div class="py-6 pr-6 border-r border-line"><div class="text-3xl font-semibold">250k+</div><div class="text-xs text-sub uppercase tracking-wider mt-1">Policies issued</div></div>
+    <div class="py-6 px-6 border-r border-line"><div class="text-3xl font-semibold">$1M+</div><div class="text-xs text-sub uppercase tracking-wider mt-1">Coverage from</div></div>
+    <div class="py-6 px-6 border-r border-line"><div class="text-3xl font-semibold">50</div><div class="text-xs text-sub uppercase tracking-wider mt-1">States licensed</div></div>
+    <div class="py-6 pl-6"><div class="text-3xl font-semibold">4.9<span class="text-accent">★</span></div><div class="text-xs text-sub uppercase tracking-wider mt-1">5,200 reviews</div></div>
+  </div>
+</section>
+
+<!-- ░░ Event picker (quote step) ░░ -->
+<section id="events" class="border-t border-line">
+  <div class="max-w-6xl mx-auto px-6 py-16">
+    <div class="flex items-end justify-between mb-10">
+      <h2 class="text-2xl md:text-3xl font-semibold tracking-tight">01 — What are you covering?</h2>
+      <span class="text-sm text-sub hidden md:block">Select an event type</span>
+    </div>
+    <div class="grid sm:grid-cols-2 md:grid-cols-4 border-t border-l border-line">
+      <a href="#plans" class="group border-r border-b border-line p-7 hover:bg-ink hover:text-paper transition-colors">
+        <div class="text-sm text-sub group-hover:text-paper/60">01</div>
+        <div class="mt-10 text-xl font-semibold">Wedding</div>
+        <div class="text-sm text-sub group-hover:text-paper/60 mt-1">From $125</div>
+      </a>
+      <a href="#plans" class="group border-r border-b border-line p-7 hover:bg-ink hover:text-paper transition-colors">
+        <div class="text-sm text-sub group-hover:text-paper/60">02</div>
+        <div class="mt-10 text-xl font-semibold">Birthday</div>
+        <div class="text-sm text-sub group-hover:text-paper/60 mt-1">From $95</div>
+      </a>
+      <a href="#plans" class="group border-r border-b border-line p-7 hover:bg-ink hover:text-paper transition-colors">
+        <div class="text-sm text-sub group-hover:text-paper/60">03</div>
+        <div class="mt-10 text-xl font-semibold">Vendor / Booth</div>
+        <div class="text-sm text-sub group-hover:text-paper/60 mt-1">From $85</div>
+      </a>
+      <a href="#plans" class="group border-r border-b border-line p-7 bg-accent text-paper hover:opacity-90 transition-opacity">
+        <div class="text-sm text-paper/70">04</div>
+        <div class="mt-10 text-xl font-semibold">Festival</div>
+        <div class="text-sm text-paper/70 mt-1">Custom quote →</div>
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- ░░ Plans ░░ -->
+<section id="plans" class="border-t border-line bg-white">
+  <div class="max-w-6xl mx-auto px-6 py-16">
+    <h2 class="text-2xl md:text-3xl font-semibold tracking-tight mb-10">02 — Choose your coverage</h2>
+    <div class="grid md:grid-cols-3 border-t border-l border-line">
+      <!-- plan -->
+      <div class="border-r border-b border-line p-8">
+        <div class="text-sm uppercase tracking-wider text-sub">Essential</div>
+        <div class="mt-4 text-5xl font-semibold tracking-tight">$140</div>
+        <div class="text-sm text-sub mt-1">$1M / $2M limits</div>
+        <ul class="mt-8 space-y-3 text-sm">
+          <li class="flex justify-between border-b border-line pb-2"><span>Per-occurrence</span><span class="font-semibold">$1M</span></li>
+          <li class="flex justify-between border-b border-line pb-2"><span>Instant certificate</span><span class="text-accent">✓</span></li>
+          <li class="flex justify-between border-b border-line pb-2"><span>Additional insureds</span><span class="font-semibold">1</span></li>
+        </ul>
+        <button class="mt-8 w-full border border-ink py-3 font-semibold hover:bg-ink hover:text-paper transition-colors">Select</button>
+      </div>
+      <!-- recommended -->
+      <div class="border-r border-b border-line p-8 bg-ink text-paper relative">
+        <div class="absolute top-0 right-0 bg-accent text-paper text-[11px] font-semibold tracking-wider px-3 py-1">RECOMMENDED</div>
+        <div class="text-sm uppercase tracking-wider text-paper/60">Most popular</div>
+        <div class="mt-4 text-5xl font-semibold tracking-tight">$166</div>
+        <div class="text-sm text-paper/60 mt-1">$1M / $5M limits</div>
+        <ul class="mt-8 space-y-3 text-sm">
+          <li class="flex justify-between border-b border-white/15 pb-2"><span>Per-occurrence</span><span class="font-semibold">$1M</span></li>
+          <li class="flex justify-between border-b border-white/15 pb-2"><span>Aggregate</span><span class="font-semibold">$5M</span></li>
+          <li class="flex justify-between border-b border-white/15 pb-2"><span>Host liquor liability</span><span class="text-accent">✓</span></li>
+          <li class="flex justify-between border-b border-white/15 pb-2"><span>Additional insureds</span><span class="font-semibold">∞</span></li>
+        </ul>
+        <button class="mt-8 w-full bg-accent text-paper py-3 font-semibold hover:opacity-90 transition-opacity">Select &amp; checkout</button>
+      </div>
+      <!-- plan -->
+      <div class="border-r border-b border-line p-8">
+        <div class="text-sm uppercase tracking-wider text-sub">Premium</div>
+        <div class="mt-4 text-5xl font-semibold tracking-tight">$210</div>
+        <div class="text-sm text-sub mt-1">$2M / $5M limits</div>
+        <ul class="mt-8 space-y-3 text-sm">
+          <li class="flex justify-between border-b border-line pb-2"><span>Per-occurrence</span><span class="font-semibold">$2M</span></li>
+          <li class="flex justify-between border-b border-line pb-2"><span>Aggregate</span><span class="font-semibold">$5M</span></li>
+          <li class="flex justify-between border-b border-line pb-2"><span>Rented premises</span><span class="text-accent">✓</span></li>
+        </ul>
+        <button class="mt-8 w-full border border-ink py-3 font-semibold hover:bg-ink hover:text-paper transition-colors">Select</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ░░ Portal ░░ -->
+<section id="portal" class="border-t border-line">
+  <div class="max-w-6xl mx-auto px-6 py-16 grid lg:grid-cols-12 gap-10 items-start">
+    <div class="lg:col-span-5">
+      <h2 class="text-2xl md:text-3xl font-semibold tracking-tight">03 — Your portal</h2>
+      <p class="mt-5 text-sub max-w-sm">One place for policies, certificates, invoices and referral rewards. Clean, fast, distraction-free.</p>
+      <a href="#" class="inline-block mt-6 font-semibold border-b-2 border-accent pb-0.5">Open the portal →</a>
+    </div>
+    <div class="lg:col-span-7 border border-line">
+      <div class="flex items-center justify-between px-6 py-4 border-b border-line">
+        <div class="font-semibold">Dashboard — Haider Malik</div>
+        <span class="w-2.5 h-2.5 bg-accent inline-block"></span>
+      </div>
+      <div class="grid grid-cols-2">
+        <div class="p-6 border-r border-b border-line"><div class="text-xs uppercase tracking-wider text-sub">Active policies</div><div class="text-4xl font-semibold mt-2">2</div></div>
+        <div class="p-6 border-b border-line"><div class="text-xs uppercase tracking-wider text-sub">Referral rewards</div><div class="text-4xl font-semibold mt-2 text-accent">$45</div></div>
+        <div class="p-6 col-span-2 flex items-center justify-between">
+          <div><div class="font-semibold">Smith Wedding · Jun 14</div><div class="text-sm text-sub">$1M / $5M · Bound</div></div>
+          <button class="bg-ink text-paper text-sm font-semibold px-5 py-2.5 hover:bg-accent transition-colors">Download COI</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer class="border-t border-ink">
+  <div class="max-w-6xl mx-auto px-6 py-8 flex flex-col sm:flex-row items-center justify-between gap-3 text-sm text-sub">
+    <div class="font-semibold text-ink">ONE DAY EVENT</div>
+    <div class="text-xs">Concept 3 — Swiss Minimal direction · generated with ui-ux-pro-max</div>
+  </div>
+</footer>
+
+</body>
+</html>

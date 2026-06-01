@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>One Day Event — Concept 2: Modern Glass</title>
+<!--
+  Design direction: Soft UI Evolution + Glassmorphism
+  Source: ui-ux-pro-max skill (Modern SaaS → glass/soft UI)
+  Font:   Plus Jakarta Sans (professional + approachable)
+  Palette: Indigo #4338CA / Blue #1E40AF / Emerald #059669 on a vibrant gradient
+-->
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&display=swap" rel="stylesheet">
+<script>
+  tailwind.config = { theme: { extend: {
+    fontFamily: { sans: ['Plus Jakarta Sans','sans-serif'] },
+    colors: { ink:'#0F172A', emerald:'#10B981', glassline:'rgba(255,255,255,0.18)' },
+    borderRadius: { glass:'18px' },
+  }}}
+</script>
+<style>
+  body{font-family:'Plus Jakarta Sans',sans-serif}
+  .mesh{
+    background:
+      radial-gradient(900px 500px at 12% -8%, #6366F1 0%, transparent 60%),
+      radial-gradient(800px 500px at 92% 8%, #06B6D4 0%, transparent 55%),
+      radial-gradient(900px 600px at 70% 110%, #10B981 0%, transparent 55%),
+      linear-gradient(160deg,#0B1220 0%, #111A33 55%, #0B1220 100%);
+  }
+  .glass{
+    background:rgba(255,255,255,0.08);
+    backdrop-filter:blur(16px); -webkit-backdrop-filter:blur(16px);
+    border:1px solid rgba(255,255,255,0.16);
+    box-shadow:0 18px 50px rgba(0,0,0,0.35);
+  }
+  .glass-bright{
+    background:rgba(255,255,255,0.14);
+    backdrop-filter:blur(18px); -webkit-backdrop-filter:blur(18px);
+    border:1px solid rgba(255,255,255,0.28);
+  }
+</style>
+</head>
+<body class="mesh min-h-screen text-white antialiased">
+
+<!-- ░░ Concept banner ░░ -->
+<div class="text-center text-xs py-2 tracking-wide text-white/70 border-b border-white/10">
+  DESIGN CONCEPT 2 / 3 &nbsp;·&nbsp; <strong>Modern Glass</strong> &nbsp;·&nbsp; frosted glass, gradient depth, premium feel
+</div>
+
+<!-- ░░ Nav ░░ -->
+<header class="sticky top-0 z-30">
+  <div class="max-w-6xl mx-auto px-6 mt-4">
+    <div class="glass rounded-glass h-16 px-5 flex items-center justify-between">
+      <div class="flex items-center gap-2.5">
+        <svg width="30" height="30" viewBox="0 0 100 100"><path d="M50 50 L50 6 A44 44 0 0 1 91 38 Z" fill="#FBBF24"/><path d="M50 50 L91 38 A44 44 0 0 1 70 92 Z" fill="#F87171"/><path d="M50 50 L70 92 A44 44 0 0 1 18 80 Z" fill="#60A5FA"/><path d="M50 50 L18 80 A44 44 0 0 1 50 6 Z" fill="#34D399"/></svg>
+        <span class="font-extrabold tracking-tight">One Day Event</span>
+      </div>
+      <nav class="hidden md:flex items-center gap-7 text-sm font-semibold text-white/75">
+        <a href="#" class="hover:text-white">Coverage</a>
+        <a href="#plans" class="hover:text-white">Plans</a>
+        <a href="#portal" class="hover:text-white">Portal</a>
+      </nav>
+      <a href="#plans" class="glass-bright rounded-full px-5 py-2 text-sm font-bold hover:bg-white/20">Get a Quote</a>
+    </div>
+  </div>
+</header>
+
+<!-- ░░ Hero ░░ -->
+<section class="max-w-6xl mx-auto px-6 pt-16 pb-10 grid lg:grid-cols-2 gap-12 items-center">
+  <div>
+    <span class="inline-flex items-center gap-2 glass rounded-full px-3.5 py-1.5 text-xs font-bold text-emerald">
+      <span class="w-1.5 h-1.5 rounded-full bg-emerald"></span> INSTANT · VENUE-APPROVED · 50 STATES
+    </span>
+    <h1 class="mt-6 text-4xl md:text-6xl font-extrabold leading-[1.05]">
+      One day.<br>Fully <span class="bg-gradient-to-r from-cyan-300 to-emerald-300 bg-clip-text text-transparent">covered.</span>
+    </h1>
+    <p class="mt-5 text-lg text-white/70 max-w-md">
+      Premium event liability insurance with a quote in seconds and a certificate
+      your venue will accept — all in a beautifully simple flow.
+    </p>
+    <div class="mt-8 flex flex-wrap gap-3">
+      <a href="#plans" class="bg-white text-ink font-bold rounded-full px-7 py-3.5 hover:bg-white/90 shadow-lg shadow-black/30">Start my quote →</a>
+      <a href="#" class="glass-bright rounded-full px-6 py-3.5 font-bold">Watch 60s demo</a>
+    </div>
+    <div class="mt-10 flex items-center gap-8">
+      <div><div class="text-2xl font-extrabold">250k+</div><div class="text-xs text-white/60">policies</div></div>
+      <div><div class="text-2xl font-extrabold">4.9★</div><div class="text-xs text-white/60">5,200 reviews</div></div>
+      <div><div class="text-2xl font-extrabold">60s</div><div class="text-xs text-white/60">avg. checkout</div></div>
+    </div>
+  </div>
+
+  <!-- glass quote card -->
+  <div class="glass rounded-glass p-6">
+    <div class="flex items-center justify-between mb-5">
+      <h3 class="font-bold text-lg">Your instant quote</h3>
+      <span class="text-xs font-bold text-emerald">● Live</span>
+    </div>
+    <div class="text-xs font-bold text-white/60 uppercase tracking-wide mb-2">Event type</div>
+    <div class="grid grid-cols-3 gap-2 mb-5">
+      <button class="glass-bright rounded-xl py-3 text-sm font-bold ring-2 ring-cyan-300/60">Wedding</button>
+      <button class="glass rounded-xl py-3 text-sm font-semibold hover:bg-white/10">Birthday</button>
+      <button class="glass rounded-xl py-3 text-sm font-semibold hover:bg-white/10">Vendor</button>
+    </div>
+    <div class="text-xs font-bold text-white/60 uppercase tracking-wide mb-2">Guests</div>
+    <input value="150" class="w-full glass rounded-xl px-4 py-3 mb-5 font-semibold bg-transparent text-white" />
+    <div class="glass-bright rounded-xl p-4 flex items-center justify-between">
+      <div><div class="text-xs text-white/70">Estimated total</div><div class="text-3xl font-extrabold">$166</div></div>
+      <a href="#plans" class="bg-white text-ink text-sm font-bold rounded-full px-5 py-2.5">See plans</a>
+    </div>
+  </div>
+</section>
+
+<!-- ░░ Feature glass row ░░ -->
+<section class="max-w-6xl mx-auto px-6 py-10 grid sm:grid-cols-3 gap-5">
+  <div class="glass rounded-glass p-6">
+    <div class="text-2xl">⚡</div>
+    <h3 class="mt-3 font-bold">Quote in 60 seconds</h3>
+    <p class="text-sm text-white/65 mt-1">Answer a few questions, see real prices instantly.</p>
+  </div>
+  <div class="glass rounded-glass p-6">
+    <div class="text-2xl">🛡️</div>
+    <h3 class="mt-3 font-bold">A+ rated carriers</h3>
+    <p class="text-sm text-white/65 mt-1">Backed coverage your venue already trusts.</p>
+  </div>
+  <div class="glass rounded-glass p-6">
+    <div class="text-2xl">📄</div>
+    <h3 class="mt-3 font-bold">Instant certificate</h3>
+    <p class="text-sm text-white/65 mt-1">Download or email your COI the moment you pay.</p>
+  </div>
+</section>
+
+<!-- ░░ Plans ░░ -->
+<section id="plans" class="max-w-6xl mx-auto px-6 py-14">
+  <div class="text-center max-w-xl mx-auto">
+    <h2 class="text-3xl md:text-4xl font-extrabold">Choose your coverage</h2>
+    <p class="mt-3 text-white/65">No hidden fees. Cancel anytime before your event.</p>
+  </div>
+  <div class="mt-10 grid md:grid-cols-3 gap-5 items-start">
+    <div class="glass rounded-glass p-6">
+      <div class="text-sm font-bold text-white/60 uppercase">Essential</div>
+      <div class="mt-3 text-4xl font-extrabold">$140</div>
+      <div class="text-xs text-white/55">$1M / $2M</div>
+      <ul class="mt-5 space-y-2.5 text-sm text-white/80">
+        <li>✓ $1M occurrence</li><li>✓ Instant certificate</li><li>✓ 1 additional insured</li>
+      </ul>
+      <button class="mt-6 w-full glass-bright rounded-full py-2.5 font-bold">Select</button>
+    </div>
+    <div class="glass-bright rounded-glass p-6 relative ring-2 ring-emerald/70 scale-[1.03]">
+      <span class="absolute -top-3 left-1/2 -translate-x-1/2 bg-emerald text-ink text-[11px] font-extrabold px-4 py-1 rounded-full">RECOMMENDED</span>
+      <div class="text-sm font-bold text-emerald uppercase">Most Popular</div>
+      <div class="mt-3 text-4xl font-extrabold">$166</div>
+      <div class="text-xs text-white/65">$1M / $5M</div>
+      <ul class="mt-5 space-y-2.5 text-sm text-white/90">
+        <li>✓ $1M occurrence · $5M aggregate</li><li>✓ Host liquor liability</li><li>✓ Unlimited additional insureds</li><li>✓ Priority support</li>
+      </ul>
+      <button class="mt-6 w-full bg-white text-ink rounded-full py-2.5 font-bold">Select &amp; checkout</button>
+    </div>
+    <div class="glass rounded-glass p-6">
+      <div class="text-sm font-bold text-white/60 uppercase">Premium</div>
+      <div class="mt-3 text-4xl font-extrabold">$210</div>
+      <div class="text-xs text-white/55">$2M / $5M</div>
+      <ul class="mt-5 space-y-2.5 text-sm text-white/80">
+        <li>✓ $2M occurrence</li><li>✓ $5M aggregate</li><li>✓ Damage to rented premises</li>
+      </ul>
+      <button class="mt-6 w-full glass-bright rounded-full py-2.5 font-bold">Select</button>
+    </div>
+  </div>
+</section>
+
+<!-- ░░ Portal ░░ -->
+<section id="portal" class="max-w-6xl mx-auto px-6 py-14 grid lg:grid-cols-2 gap-10 items-center">
+  <div>
+    <span class="text-xs font-bold text-emerald uppercase tracking-widest">Customer portal</span>
+    <h2 class="mt-3 text-3xl md:text-4xl font-extrabold">Manage everything, beautifully</h2>
+    <p class="mt-4 text-white/70 max-w-md">Policies, certificates, invoices and referral rewards — in one elegant dashboard, on any device.</p>
+  </div>
+  <div class="glass rounded-glass p-5">
+    <div class="flex items-center justify-between mb-4">
+      <div class="font-bold">Welcome back, Haider</div>
+      <div class="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center text-sm font-bold">HM</div>
+    </div>
+    <div class="grid grid-cols-2 gap-3">
+      <div class="glass-bright rounded-xl p-4"><div class="text-xs text-white/65">Active policies</div><div class="text-2xl font-extrabold">2</div></div>
+      <div class="glass-bright rounded-xl p-4"><div class="text-xs text-white/65">Rewards</div><div class="text-2xl font-extrabold text-emerald">$45</div></div>
+      <div class="glass-bright rounded-xl p-4 col-span-2 flex items-center justify-between">
+        <div><div class="font-semibold">Smith Wedding · Jun 14</div><div class="text-xs text-white/60">$1M/$5M · Bound</div></div>
+        <button class="bg-white text-ink text-xs font-bold rounded-full px-4 py-2">Download COI</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer class="border-t border-white/10">
+  <div class="max-w-6xl mx-auto px-6 py-8 flex flex-col sm:flex-row items-center justify-between gap-3 text-white/60 text-sm">
+    <div class="font-bold text-white">One Day Event</div>
+    <div class="text-xs">Concept 2 — Modern Glass direction · generated with ui-ux-pro-max</div>
+  </div>
+</footer>
+
+</body>
+</html>

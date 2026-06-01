@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>One Day Event — Concept 1: Trust &amp; Authority</title>
+<!--
+  Design direction: Trust & Authority + Flat Design
+  Source: ui-ux-pro-max skill (Insurance Platform → Trust & Authority)
+  Fonts:  Corporate Trust pairing — Lexend + Source Sans 3
+  Palette: Security blue #0369A1 + Protected green #16A34A + ODE red CTA #E0232C
+-->
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700;800&family=Source+Sans+3:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script>
+  tailwind.config = {
+    theme: { extend: {
+      fontFamily: { heading: ['Lexend','sans-serif'], body: ['Source Sans 3','sans-serif'] },
+      colors: {
+        trust:   { DEFAULT:'#0369A1', deep:'#0C4A6E', sky:'#0EA5E9', wash:'#F0F9FF', border:'#BAE6FD' },
+        secure:  '#16A34A',
+        cta:     '#E0232C',
+        ink:     '#0C4A6E',
+        muted:   '#64748B',
+      },
+      boxShadow: { card:'0 4px 6px rgba(0,0,0,0.07)', lift:'0 14px 40px rgba(3,105,161,0.14)' },
+    }}
+  }
+</script>
+<style>
+  body{font-family:'Source Sans 3',sans-serif}
+  h1,h2,h3,.font-heading{font-family:'Lexend',sans-serif}
+  .badge{box-shadow:0 1px 0 rgba(0,0,0,.04)}
+</style>
+</head>
+<body class="bg-trust-wash text-ink antialiased">
+
+<!-- ░░ Concept banner ░░ -->
+<div class="bg-trust-deep text-white text-center text-xs py-2 tracking-wide">
+  DESIGN CONCEPT 1 / 3 &nbsp;·&nbsp; <strong class="font-heading">Trust &amp; Authority</strong> &nbsp;·&nbsp; conversion-optimized, badge-driven
+</div>
+
+<!-- ░░ Nav ░░ -->
+<header class="sticky top-0 z-30 bg-white/90 backdrop-blur border-b border-trust-border">
+  <div class="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
+    <div class="flex items-center gap-2.5">
+      <svg width="34" height="34" viewBox="0 0 100 100" aria-hidden="true">
+        <path d="M50 50 L50 6 A44 44 0 0 1 91 38 Z" fill="#F59E0B"/>
+        <path d="M50 50 L91 38 A44 44 0 0 1 70 92 Z" fill="#E0232C"/>
+        <path d="M50 50 L70 92 A44 44 0 0 1 18 80 Z" fill="#0369A1"/>
+        <path d="M50 50 L18 80 A44 44 0 0 1 50 6 Z" fill="#16A34A"/>
+      </svg>
+      <div class="leading-none">
+        <div class="font-heading font-bold tracking-tight text-trust-deep">ONE DAY EVENT</div>
+        <div class="text-[10px] tracking-[0.25em] text-muted">JUST ENJOY</div>
+      </div>
+    </div>
+    <nav class="hidden md:flex items-center gap-7 text-sm font-semibold text-ink/80">
+      <a href="#" class="hover:text-trust">Coverage</a>
+      <a href="#plans" class="hover:text-trust">Plans</a>
+      <a href="#portal" class="hover:text-trust">Portal</a>
+      <a href="#" class="hover:text-trust">Support</a>
+    </nav>
+    <div class="flex items-center gap-3">
+      <a href="#" class="hidden sm:inline text-sm font-semibold text-trust">Log in</a>
+      <a href="#quote" class="bg-cta hover:bg-[#c41e26] text-white text-sm font-bold rounded-full px-5 py-2.5 shadow-card">Get a Quote</a>
+    </div>
+  </div>
+</header>
+
+<!-- ░░ Hero (landing) ░░ -->
+<section id="quote" class="max-w-6xl mx-auto px-6 pt-14 pb-10 grid lg:grid-cols-2 gap-12 items-center">
+  <div>
+    <span class="inline-flex items-center gap-2 bg-secure/10 text-secure text-xs font-bold px-3 py-1.5 rounded-full">
+      <span class="w-1.5 h-1.5 rounded-full bg-secure"></span> A+ RATED CARRIERS · LICENSED IN ALL 50 STATES
+    </span>
+    <h1 class="mt-5 text-4xl md:text-5xl font-extrabold leading-[1.08] text-trust-deep">
+      Event insurance,<br>issued in <span class="text-trust">60 seconds.</span>
+    </h1>
+    <p class="mt-5 text-lg text-muted max-w-md">
+      Protect your wedding, party or vendor booth with liability coverage your venue
+      will accept — instant certificate, no paperwork.
+    </p>
+    <div class="mt-7 flex flex-wrap items-center gap-3">
+      <a href="#events" class="bg-cta hover:bg-[#c41e26] text-white font-bold rounded-full px-7 py-3.5 shadow-lift">Start my quote →</a>
+      <a href="#" class="font-bold text-trust px-5 py-3.5">Call 888-639-0093</a>
+    </div>
+    <div class="mt-9 grid grid-cols-3 gap-4 max-w-md">
+      <div class="text-center"><div class="font-heading text-2xl font-bold text-trust-deep">250k+</div><div class="text-xs text-muted">policies issued</div></div>
+      <div class="text-center"><div class="font-heading text-2xl font-bold text-trust-deep">$1M+</div><div class="text-xs text-muted">coverage from</div></div>
+      <div class="text-center"><div class="font-heading text-2xl font-bold text-trust-deep">4.9★</div><div class="text-xs text-muted">5,200 reviews</div></div>
+    </div>
+  </div>
+
+  <!-- Quote card mock -->
+  <div class="bg-white rounded-2xl shadow-lift border border-trust-border p-6">
+    <div class="flex items-center justify-between mb-4">
+      <h3 class="font-heading font-bold text-trust-deep">Instant quote</h3>
+      <span class="text-xs font-bold text-secure flex items-center gap-1">
+        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg> Secure
+      </span>
+    </div>
+    <label class="text-xs font-bold text-muted uppercase tracking-wide">Event type</label>
+    <div class="grid grid-cols-3 gap-2 mt-2 mb-4">
+      <button class="border-2 border-trust bg-trust text-white rounded-xl py-3 text-sm font-bold">Wedding</button>
+      <button class="border border-trust-border rounded-xl py-3 text-sm font-semibold hover:border-trust">Birthday</button>
+      <button class="border border-trust-border rounded-xl py-3 text-sm font-semibold hover:border-trust">Vendor</button>
+    </div>
+    <label class="text-xs font-bold text-muted uppercase tracking-wide">Guests</label>
+    <input value="150" class="w-full mt-2 mb-4 border border-trust-border rounded-xl px-4 py-3 font-semibold" />
+    <div class="bg-trust-wash rounded-xl p-4 flex items-center justify-between">
+      <div><div class="text-xs text-muted">Your estimate</div><div class="font-heading text-2xl font-bold text-trust-deep">$166<span class="text-sm text-muted">/event</span></div></div>
+      <a href="#plans" class="bg-cta text-white text-sm font-bold rounded-full px-5 py-2.5">See plans</a>
+    </div>
+  </div>
+</section>
+
+<!-- ░░ Trust bar ░░ -->
+<section class="border-y border-trust-border bg-white">
+  <div class="max-w-6xl mx-auto px-6 py-6 grid sm:grid-cols-3 gap-4">
+    <div class="flex items-center gap-3 badge bg-trust-wash rounded-xl px-4 py-3">
+      <svg width="22" height="22" fill="none" stroke="#0369A1" stroke-width="2" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+      <span class="text-sm font-semibold">Carrier-backed, A+ rated coverage</span>
+    </div>
+    <div class="flex items-center gap-3 badge bg-trust-wash rounded-xl px-4 py-3">
+      <svg width="22" height="22" fill="none" stroke="#16A34A" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+      <span class="text-sm font-semibold">Bank-grade encrypted checkout</span>
+    </div>
+    <div class="flex items-center gap-3 badge bg-trust-wash rounded-xl px-4 py-3">
+      <svg width="22" height="22" fill="none" stroke="#F59E0B" stroke-width="2" viewBox="0 0 24 24"><path d="M12 2l2.4 7.4H22l-6 4.6 2.3 7.4-6.3-4.6L5.7 21 8 14 2 9.4h7.6z"/></svg>
+      <span class="text-sm font-semibold">Venue-approved certificate, instantly</span>
+    </div>
+  </div>
+</section>
+
+<!-- ░░ Event picker (quote step) ░░ -->
+<section id="events" class="max-w-6xl mx-auto px-6 py-16">
+  <div class="text-center max-w-xl mx-auto">
+    <h2 class="text-3xl font-extrabold text-trust-deep">What are you covering?</h2>
+    <p class="mt-3 text-muted">Pick an event to get a tailored quote in seconds.</p>
+  </div>
+  <div class="mt-9 grid grid-cols-2 md:grid-cols-4 gap-4">
+    <!-- card -->
+    <div class="bg-white rounded-2xl border border-trust-border shadow-card p-5 hover:shadow-lift hover:-translate-y-0.5 transition cursor-pointer">
+      <div class="w-11 h-11 rounded-xl bg-trust/10 text-trust flex items-center justify-center text-xl">💍</div>
+      <div class="mt-3 font-heading font-bold text-trust-deep">Wedding</div>
+      <div class="text-xs text-muted mt-1">From $125 / event</div>
+    </div>
+    <div class="bg-white rounded-2xl border border-trust-border shadow-card p-5 hover:shadow-lift hover:-translate-y-0.5 transition cursor-pointer">
+      <div class="w-11 h-11 rounded-xl bg-secure/10 text-secure flex items-center justify-center text-xl">🎉</div>
+      <div class="mt-3 font-heading font-bold text-trust-deep">Birthday</div>
+      <div class="text-xs text-muted mt-1">From $95 / event</div>
+    </div>
+    <div class="bg-white rounded-2xl border border-trust-border shadow-card p-5 hover:shadow-lift hover:-translate-y-0.5 transition cursor-pointer">
+      <div class="w-11 h-11 rounded-xl bg-cta/10 text-cta flex items-center justify-center text-xl">🛍️</div>
+      <div class="mt-3 font-heading font-bold text-trust-deep">Vendor / Booth</div>
+      <div class="text-xs text-muted mt-1">From $85 / event</div>
+    </div>
+    <div class="bg-white rounded-2xl border border-trust-border shadow-card p-5 hover:shadow-lift hover:-translate-y-0.5 transition cursor-pointer">
+      <div class="w-11 h-11 rounded-xl bg-[#F59E0B]/10 text-[#F59E0B] flex items-center justify-center text-xl">🎪</div>
+      <div class="mt-3 font-heading font-bold text-trust-deep">Festival</div>
+      <div class="text-xs text-muted mt-1">Custom quote</div>
+    </div>
+  </div>
+</section>
+
+<!-- ░░ Plans ░░ -->
+<section id="plans" class="bg-white border-y border-trust-border py-16">
+  <div class="max-w-6xl mx-auto px-6">
+    <div class="text-center max-w-xl mx-auto">
+      <h2 class="text-3xl font-extrabold text-trust-deep">Coverage that your venue accepts</h2>
+      <p class="mt-3 text-muted">Transparent pricing. No hidden fees. Cancel anytime before your event.</p>
+    </div>
+    <div class="mt-10 grid md:grid-cols-3 gap-6 items-start">
+      <!-- plan -->
+      <div class="rounded-2xl border border-trust-border p-6 shadow-card">
+        <div class="text-sm font-bold text-muted uppercase tracking-wide">Essential</div>
+        <div class="mt-3 font-heading text-4xl font-extrabold text-trust-deep">$140</div>
+        <div class="text-xs text-muted">$1M / $2M limits</div>
+        <ul class="mt-5 space-y-2.5 text-sm">
+          <li class="flex gap-2"><span class="text-secure font-bold">✓</span> Liability up to $1M occurrence</li>
+          <li class="flex gap-2"><span class="text-secure font-bold">✓</span> Instant certificate</li>
+          <li class="flex gap-2"><span class="text-secure font-bold">✓</span> Add 1 additional insured</li>
+        </ul>
+        <button class="mt-6 w-full border-2 border-trust text-trust font-bold rounded-full py-2.5">Select</button>
+      </div>
+      <!-- recommended -->
+      <div class="rounded-2xl border-2 border-cta p-6 shadow-lift relative">
+        <span class="absolute -top-3 left-1/2 -translate-x-1/2 bg-cta text-white text-[11px] font-extrabold tracking-wider px-4 py-1 rounded-full">RECOMMENDED</span>
+        <div class="text-sm font-bold text-cta uppercase tracking-wide">Most Popular</div>
+        <div class="mt-3 font-heading text-4xl font-extrabold text-trust-deep">$166</div>
+        <div class="text-xs text-muted">$1M / $5M limits</div>
+        <ul class="mt-5 space-y-2.5 text-sm">
+          <li class="flex gap-2"><span class="text-secure font-bold">✓</span> Liability up to $1M occurrence</li>
+          <li class="flex gap-2"><span class="text-secure font-bold">✓</span> $5M aggregate</li>
+          <li class="flex gap-2"><span class="text-secure font-bold">✓</span> Host liquor liability</li>
+          <li class="flex gap-2"><span class="text-secure font-bold">✓</span> Unlimited additional insureds</li>
+        </ul>
+        <button class="mt-6 w-full bg-cta text-white font-bold rounded-full py-2.5 shadow-card">Select &amp; checkout</button>
+      </div>
+      <!-- plan -->
+      <div class="rounded-2xl border border-trust-border p-6 shadow-card">
+        <div class="text-sm font-bold text-muted uppercase tracking-wide">Premium</div>
+        <div class="mt-3 font-heading text-4xl font-extrabold text-trust-deep">$210</div>
+        <div class="text-xs text-muted">$2M / $5M limits</div>
+        <ul class="mt-5 space-y-2.5 text-sm">
+          <li class="flex gap-2"><span class="text-secure font-bold">✓</span> Liability up to $2M occurrence</li>
+          <li class="flex gap-2"><span class="text-secure font-bold">✓</span> $5M aggregate</li>
+          <li class="flex gap-2"><span class="text-secure font-bold">✓</span> Damage to rented premises</li>
+        </ul>
+        <button class="mt-6 w-full border-2 border-trust text-trust font-bold rounded-full py-2.5">Select</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ░░ Portal preview ░░ -->
+<section id="portal" class="max-w-6xl mx-auto px-6 py-16">
+  <div class="grid lg:grid-cols-2 gap-10 items-center">
+    <div>
+      <span class="text-xs font-bold text-trust uppercase tracking-widest">Customer portal</span>
+      <h2 class="mt-3 text-3xl font-extrabold text-trust-deep">Everything in one secure place</h2>
+      <p class="mt-4 text-muted max-w-md">View your policy, download or re-send your certificate, pay invoices, and refer friends — 24/7 from any device.</p>
+      <ul class="mt-6 space-y-3 text-sm font-semibold">
+        <li class="flex gap-2"><span class="text-secure">✓</span> Download your Certificate of Insurance instantly</li>
+        <li class="flex gap-2"><span class="text-secure">✓</span> Email it to your venue in one click</li>
+        <li class="flex gap-2"><span class="text-secure">✓</span> Track invoices &amp; referral rewards</li>
+      </ul>
+    </div>
+    <!-- dashboard mock -->
+    <div class="bg-trust-wash rounded-2xl border border-trust-border p-5 shadow-lift">
+      <div class="flex items-center justify-between mb-4">
+        <div class="font-heading font-bold text-trust-deep">Hi, Haider 👋</div>
+        <div class="w-9 h-9 rounded-full bg-trust text-white flex items-center justify-center text-sm font-bold">HM</div>
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        <div class="bg-white rounded-xl p-4 shadow-card">
+          <div class="text-xs text-muted">Active policies</div>
+          <div class="font-heading text-2xl font-extrabold text-trust-deep">2</div>
+        </div>
+        <div class="bg-white rounded-xl p-4 shadow-card">
+          <div class="text-xs text-muted">Referral rewards</div>
+          <div class="font-heading text-2xl font-extrabold text-secure">$45</div>
+        </div>
+        <div class="bg-white rounded-xl p-4 shadow-card col-span-2 flex items-center justify-between">
+          <div>
+            <div class="font-semibold text-trust-deep">Smith Wedding · Jun 14</div>
+            <div class="text-xs text-muted">$1M/$5M · Bound</div>
+          </div>
+          <button class="bg-cta text-white text-xs font-bold rounded-full px-4 py-2">Download COI</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ░░ Footer ░░ -->
+<footer class="bg-trust-deep text-white/80">
+  <div class="max-w-6xl mx-auto px-6 py-10 flex flex-col sm:flex-row items-center justify-between gap-4">
+    <div class="font-heading font-bold text-white">ONE DAY EVENT</div>
+    <div class="text-xs">Concept 1 — Trust &amp; Authority direction · generated with ui-ux-pro-max</div>
+  </div>
+</footer>
+
+</body>
+</html>
