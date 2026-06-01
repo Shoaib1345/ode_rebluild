@@ -232,6 +232,72 @@ class LeadCreationService
     }
 
     /**
+     * Create a lead manually from the admin CRM (e.g. a phoned-in / offline
+     * quote). No Stripe charge. If a plan/price is supplied the lead is marked
+     * 'plan_added_manually' (ready to invoice); otherwise 'mq'. The admin can
+     * then raise an invoice against the returned lead for online payment.
+     */
+    public function createAdminLead(array $data, ?int $adminId = null): Lead
+    {
+        $stateRow = UsState::where('abbreviation', strtoupper($data['event_state'] ?? ''))
+            ->orWhere('name', $data['event_state'] ?? '')
+            ->first();
+
+        $alcoholServed = 'none';
+        if ($data['liquor'] ?? false)          $alcoholServed = 'sold';
+        elseif ($data['host_liquor'] ?? false) $alcoholServed = 'hosted';
+
+        $hasPlan = isset($data['total']) && $data['total'] !== null && $data['total'] !== '';
+
+        $leadData = [
+            'event_type_id'      => $data['event_type_id']   ?? null,
+            'event_type_label'   => $data['event_type_name'] ?? null,
+            'event_date'         => $this->parseFirstDate($data['event_dates'] ?? ''),
+            'state_id'           => $stateRow?->id,
+            'event_state'        => strtoupper(substr($data['event_state'] ?? '', 0, 2)),
+            'event_name'         => $data['event_name'] ?? null,
+            'no_of_people'       => $data['persons'] ?? null,
+            'alcohol_served'     => $alcoholServed,
+            'waiver_sub_status'  => $data['w_o_s']     ?? false,
+            'hired_status'       => $data['noha']      ?? false,
+            'primary_basis'      => $data['p_a_n_c_b'] ?? false,
+            'additional_insured' => $data['additional_insureds'] ?? 0,
+            'private_residence'  => $data['private_residence']   ?? false,
+            'email'              => $data['email'],
+            'phone'              => $data['phone']      ?? null,
+            'first_name'         => $data['first_name'] ?? null,
+            'last_name'          => $data['last_name']  ?? null,
+            'user_timezone'      => $data['timezone']   ?? null,
+            'submission_status'  => $hasPlan ? 'plan_added_manually' : 'mq',
+        ];
+
+        if ($hasPlan) {
+            $leadData['carrier']        = $data['carrier'] ?? null;
+            $leadData['coverage_limit'] = ($data['min_limit'] ?? '') . '/' . ($data['max_limit'] ?? '');
+            $leadData['lead_offered_plans'] = [
+                'carrier'        => $data['carrier'] ?? null,
+                'premium'        => (float) ($data['premium'] ?? 0),
+                'broker_fee'     => (float) ($data['broker_fee'] ?? 0),
+                'processing_fee' => (float) ($data['processing_fee'] ?? 0),
+                'total'          => (float) ($data['total'] ?? 0),
+                'min_limit'      => (int)   ($data['min_limit'] ?? 0),
+                'max_limit'      => (int)   ($data['max_limit'] ?? 0),
+            ];
+        }
+
+        $lead = Lead::create($leadData);
+
+        LeadAction::create([
+            'lead_id'     => $lead->id,
+            'user_id'     => $adminId,
+            'action_type' => null,
+            'message'     => 'Lead created manually from the admin CRM.',
+        ]);
+
+        return $lead;
+    }
+
+    /**
      * Parse the first event date from a comma list, accepting m/d/Y, Y-m-d, or
      * anything Carbon understands. Returns a Y-m-d string or null.
      */

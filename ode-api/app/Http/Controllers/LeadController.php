@@ -61,6 +61,7 @@ class LeadController extends Controller
             'untouched'     => ['nullable', 'boolean'],
             'cancelled'     => ['nullable', 'boolean'],
             'untouch'       => ['nullable', 'boolean'],
+            'hold'          => ['nullable', 'boolean'],
             'my_leads'      => ['nullable', 'boolean'],
             // pagination / sort
             'per_page'      => ['nullable', 'integer', 'min:1', 'max:100'],
@@ -145,6 +146,11 @@ class LeadController extends Controller
         // Untouch — submission_status = tried (broader "untouched" without email checks)
         if ($request->boolean('untouch')) {
             $query->where('submission_status', 'tried');
+        }
+
+        // On hold — flagged by staff
+        if ($request->boolean('hold')) {
+            $query->where('is_on_hold', true);
         }
 
         // My leads — leads assigned to the currently authenticated user
@@ -542,6 +548,53 @@ class LeadController extends Controller
         return response()->json([
             'lead_number' => $result['lead_number'],
             'message'     => 'Payment successful. Your policy is being processed.',
+        ], 201);
+    }
+
+    /**
+     * POST /api/admin/leads
+     * Admin-only: create a lead manually (phoned-in / offline quote), no payment.
+     * If a plan/price is supplied the lead is 'plan_added_manually' (invoiceable);
+     * otherwise 'mq'.
+     */
+    public function storeAdmin(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            // Event
+            'event_type_id'   => ['nullable', 'integer', 'exists:event_types,id'],
+            'event_type_name' => ['nullable', 'string'],
+            'event_dates'     => ['nullable', 'string'],
+            'event_state'     => ['required', 'string'],
+            'persons'         => ['nullable', 'integer', 'min:1'],
+            'event_name'      => ['nullable', 'string'],
+            'noha'            => ['nullable', 'boolean'],
+            'w_o_s'           => ['nullable', 'boolean'],
+            'p_a_n_c_b'       => ['nullable', 'boolean'],
+            'host_liquor'     => ['nullable', 'boolean'],
+            'liquor'          => ['nullable', 'boolean'],
+            'additional_insureds' => ['nullable', 'integer', 'min:0'],
+            'private_residence'   => ['nullable', 'boolean'],
+            'timezone'        => ['nullable', 'string'],
+            // Contact
+            'first_name'      => ['required', 'string', 'max:100'],
+            'last_name'       => ['required', 'string', 'max:100'],
+            'email'           => ['required', 'email'],
+            'phone'           => ['required', 'string', 'max:30'],
+            // Optional chosen plan
+            'carrier'         => ['nullable', 'string'],
+            'premium'         => ['nullable', 'numeric', 'min:0'],
+            'broker_fee'      => ['nullable', 'numeric', 'min:0'],
+            'processing_fee'  => ['nullable', 'numeric', 'min:0'],
+            'total'           => ['nullable', 'numeric', 'min:0'],
+            'min_limit'       => ['nullable', 'integer'],
+            'max_limit'       => ['nullable', 'integer'],
+        ]);
+
+        $lead = $this->leadService->createAdminLead($data, $request->user()->id);
+
+        return response()->json([
+            'lead'    => $lead,
+            'message' => 'Lead created.',
         ], 201);
     }
 

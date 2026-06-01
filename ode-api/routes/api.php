@@ -123,6 +123,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
         // Leads CRUD
         Route::get('/leads',                         [LeadController::class, 'index']);
+        Route::post('/leads',                        [LeadController::class, 'storeAdmin']);
         Route::get('/leads/{id}',                    [LeadController::class, 'show']);
         Route::patch('/leads/{id}',                  [LeadController::class, 'update']);
         Route::delete('/leads/{id}',                 [LeadController::class, 'destroy']);
