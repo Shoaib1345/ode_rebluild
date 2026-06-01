@@ -111,7 +111,14 @@ export default function EventTypePage() {
     >
 
       {/* ── Quick-pick row: Wedding | Birthday | Vendor at Event ─────────── */}
-      <div style={{ display: 'flex', gap: 10, marginBottom: 20 }}>
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 14,
+          marginBottom: 35,
+        }}
+      >
         {QUICK_PICKS.map(({ db, label }) => (
           <button
             key={db}
@@ -120,11 +127,13 @@ export default function EventTypePage() {
             disabled={isLoading}
             style={{
               flex: 1,
-              lineHeight: '54px',
-              fontSize: 15,
+              minWidth: 0,
+              height: 54,
+              fontSize: 16,
               fontWeight: 600,
               textAlign: 'center',
               borderRadius: 10,
+              whiteSpace: 'nowrap',
               border: activeDb === db
                 ? '1px solid #E0232C'
                 : '1px solid #105778',
@@ -133,6 +142,7 @@ export default function EventTypePage() {
               cursor: isLoading ? 'not-allowed' : 'pointer',
               opacity: isLoading ? 0.5 : 1,
               transition: 'background-color 0.15s, color 0.15s, border-color 0.15s',
+              padding: '0 12px',
             }}
           >
             {label}
@@ -243,7 +253,7 @@ export default function EventTypePage() {
       </div>
 
       {/* ── Helper text ──────────────────────────────────────────────────── */}
-      <p style={{ textAlign: 'center', fontSize: 13, color: '#1CA0DF', marginBottom: 4 }}>
+      <p style={{ textAlign: 'center', fontSize: 13, color: '#262D45', marginTop: 10, marginBottom: 4 }}>
         Please type in your event if you do not see it in the dropdown
       </p>
 

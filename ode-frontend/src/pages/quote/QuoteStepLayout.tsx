@@ -57,6 +57,9 @@ export default function QuoteStepLayout({
     toast('Complete your info on step 9 to receive a saved-quote link!', { icon: '📧' })
   }
 
+  // Outer 1030px container matches legacy `.quote-pg header .container` + `.quote-pg .quote`
+  const OUTER_MAX = 1030
+
   return (
     <div className="min-h-screen bg-white" style={{ position: 'relative' }}>
 
@@ -66,7 +69,13 @@ export default function QuoteStepLayout({
         {/* ── Header ───────────────────────────────────────────────────────── */}
         <header
           className="flex items-center justify-between px-5 sm:px-8"
-          style={{ height: 65, marginTop: 26, marginBottom: 26 }}
+          style={{
+            height: 65,
+            margin: '30px auto',
+            maxWidth: OUTER_MAX,
+            width: '100%',
+            boxSizing: 'border-box',
+          }}
         >
           {/* Left group: back arrow + logo */}
           <div className="flex items-center" style={{ gap: 12 }}>
@@ -146,7 +155,15 @@ export default function QuoteStepLayout({
         </header>
 
         {/* ── Progress bar ─────────────────────────────────────────────────── */}
-        <div className="px-5 sm:px-8" style={{ marginBottom: 44 }}>
+        <div
+          className="px-5 sm:px-8"
+          style={{
+            margin: '0 auto 50px',
+            maxWidth: OUTER_MAX,
+            width: '100%',
+            boxSizing: 'border-box',
+          }}
+        >
           {checkoutStep != null ? (
             /* ── Checkout 3-step progress bar ──────────────────────────────── */
             <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
@@ -178,13 +195,13 @@ export default function QuoteStepLayout({
             /* ── Wizard 10-pill progress bar ────────────────────────────────── */
             <div
               style={{
-                background: 'rgba(28,160,221,0.12)',
-                height: 16,
+                background: 'rgba(28,160,221,0.1)',
+                height: 18,
                 borderRadius: 40,
                 display: 'flex',
                 alignItems: 'center',
-                padding: '0 8px',
-                gap: 6,
+                padding: '0 5px',
+                gap: 10,
               }}
             >
               {Array.from({ length: TOTAL_STEPS }, (_, i) => (
@@ -195,7 +212,7 @@ export default function QuoteStepLayout({
                     height: 4,
                     borderRadius: 40,
                     background: '#1087c3',
-                    opacity: i + 1 <= step ? 1 : 0.15,
+                    opacity: i + 1 <= step ? 1 : 0.1,
                     transition: 'opacity 0.3s ease',
                   }}
                 />
@@ -204,22 +221,22 @@ export default function QuoteStepLayout({
           )}
         </div>
 
-        {/* ── Page content ─────────────────────────────────────────────────── */}
+        {/* ── Outer content (1030px) — holds wide title/subtitle ────────────── */}
         <div
+          className="px-5 sm:px-8"
           style={{
-            maxWidth: wide ? 1000 : (innerNarrow ? 426 : 608),
-            width: '100%',
+            maxWidth: OUTER_MAX,
             margin: '0 auto',
-            padding: '0 20px',
+            width: '100%',
             boxSizing: 'border-box',
           }}
         >
-          {/* 1. Title (omitted when empty) */}
+          {/* 1. Title — wide canvas so it doesn't wrap awkwardly */}
           {title && (
             <h2
               style={{
                 fontSize: 32,
-                lineHeight: '40px',
+                lineHeight: '39px',
                 fontWeight: 900,
                 marginBottom: subtitle ? 12 : 30,
                 textAlign: 'center',
@@ -230,7 +247,7 @@ export default function QuoteStepLayout({
             </h2>
           )}
 
-          {/* 2. Subtitle */}
+          {/* 2. Subtitle — also wide */}
           {subtitle && (
             <p
               style={{
@@ -245,25 +262,35 @@ export default function QuoteStepLayout({
             </p>
           )}
 
-          {/* 3. Illustration image */}
-          {image && (
-            <div
-              style={{
-                height: imageLarge ? 148 : 118,
-                backgroundImage: `url(${image})`,
-                backgroundSize: 'contain',
-                backgroundRepeat: 'no-repeat',
-                backgroundPosition: 'center',
-                marginBottom: 28,
-              }}
-            />
-          )}
+          {/* ── Inner (568px / 426 narrow / 1000 wide) — image + form ───────── */}
+          <div
+            style={{
+              maxWidth: wide ? 1000 : (innerNarrow ? 426 : 568),
+              width: '100%',
+              margin: '0 auto',
+              boxSizing: 'border-box',
+            }}
+          >
+            {/* 3. Illustration image */}
+            {image && (
+              <div
+                style={{
+                  height: imageLarge ? 150 : 125,
+                  backgroundImage: `url(${image})`,
+                  backgroundSize: 'contain',
+                  backgroundRepeat: 'no-repeat',
+                  backgroundPosition: 'center',
+                  marginBottom: 30,
+                }}
+              />
+            )}
 
-          {/* 4. Page-specific content */}
-          {children}
+            {/* 4. Page-specific content */}
+            {children}
 
-          {/* Breathing room before footer wave shows */}
-          <div style={{ height: 60 }} />
+            {/* Breathing room before footer wave shows */}
+            <div style={{ height: 60 }} />
+          </div>
         </div>
       </div>
 
