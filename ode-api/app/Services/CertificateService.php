@@ -473,7 +473,39 @@ class CertificateService
             $lead->no_of_people ? 'Guests: ' . $lead->no_of_people : null,
         ]);
 
-        return implode(' | ', $parts);
+        $description = implode(' | ', $parts);
+
+        // List named additional insureds in the description box (ACORD practice).
+        $aiLine = $this->formatAdditionalInsureds($lead->additional_insured_details);
+        if ($aiLine !== '') {
+            $description .= ($description !== '' ? "\n\n" : '') . $aiLine;
+        }
+
+        return $description;
+    }
+
+    /**
+     * Format named additional insureds for the certificate, e.g.
+     * "Additional Insureds: Acme Venue (Venue), Bob Caterer." Empty when none.
+     *
+     * @param  array<int,array<string,mixed>>|null  $details
+     */
+    public function formatAdditionalInsureds(?array $details): string
+    {
+        if (! is_array($details) || count($details) === 0) {
+            return '';
+        }
+
+        $names = array_values(array_filter(array_map(function ($ai) {
+            $name = trim((string) ($ai['name'] ?? ''));
+            if ($name === '') {
+                return null;
+            }
+            $relation = trim((string) ($ai['relation'] ?? ''));
+            return $relation !== '' ? "{$name} ({$relation})" : $name;
+        }, $details)));
+
+        return $names ? 'Additional Insureds: ' . implode(', ', $names) . '.' : '';
     }
 
     // ─────────────────────────────────────────────────────────────────────────
