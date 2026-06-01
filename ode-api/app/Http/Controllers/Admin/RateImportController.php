@@ -43,11 +43,28 @@ class RateImportController extends Controller
         'carrier', 'min_limit', 'max_limit', 'gl_limit', 'gl_limit_type',
     ];
 
+    /** Genuine boolean columns only. */
     private const BOOLEAN_FIELDS = [
-        'host_liquor', 'liquor', 'noha', 'w_o_s', 'p_a_n_c_b', 'e_a_i',
+        'host_liquor', 'liquor',
         'same_day_coverage', 'weekend_coverage',
         'quote_instantly', 'bind_instantly',
+    ];
+
+    /**
+     * Integer rate columns (nullable). These were previously (wrongly) in
+     * BOOLEAN_FIELDS, which coerced real per-person rates to 0/1.
+     */
+    private const INTEGER_FIELDS = [
         'additional_people', 'additional_charges',
+    ];
+
+    /**
+     * String add-on columns: hold 'N/A', 'M/Q', or a dollar amount. Must NOT be
+     * coerced — the pricing engine reads (float) of these, so a "$25" NOHA must
+     * survive as "25", not collapse to a boolean.
+     */
+    private const ADDON_STRING_FIELDS = [
+        'noha', 'w_o_s', 'p_a_n_c_b', 'e_a_i',
     ];
 
     // ── Import event_rates ────────────────────────────────────────────────────
@@ -124,6 +141,20 @@ class RateImportController extends Controller
             // Parse boolean fields (1/0/true/false/yes/no)
             foreach (self::BOOLEAN_FIELDS as $field) {
                 $data[$field] = $this->parseBool($data[$field]);
+            }
+
+            // Parse integer rate fields (empty → null so the column stays nullable)
+            foreach (self::INTEGER_FIELDS as $field) {
+                $data[$field] = ($data[$field] === '' || $data[$field] === null)
+                    ? null
+                    : (int) $data[$field];
+            }
+
+            // Normalise string add-on fields (empty → 'N/A'); keep dollar amounts intact
+            foreach (self::ADDON_STRING_FIELDS as $field) {
+                $data[$field] = ($data[$field] === '' || $data[$field] === null)
+                    ? 'N/A'
+                    : $data[$field];
             }
 
             // Parse states
