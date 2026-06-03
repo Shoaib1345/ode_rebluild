@@ -19,12 +19,14 @@ async function fetchQuote(params: Record<string, unknown>): Promise<{ plans: Quo
 
 const SLOT_ORDER = ['firstOption', 'secondOption', 'thirdOption', 'fourthOption'] as const
 
+// Exact ode_new card colors per slot; the recommended plan overrides to red.
 const SLOT_COLOR: Record<string, string> = {
-  firstOption:  '#1CA0DF',   // blue
-  secondOption: '#E0232C',   // red (recommended)
-  thirdOption:  '#28A745',   // green
-  fourthOption: '#1a237e',   // dark navy
+  firstOption:  '#2C9FD9',   // blue
+  secondOption: '#F59D0E',   // orange
+  thirdOption:  '#009345',   // green
+  fourthOption: '#36326C',   // navy
 }
+const REC_COLOR = '#E0232C'  // maroon/red — the recommended card
 
 // ─── Plan Card ────────────────────────────────────────────────────────────────
 
@@ -37,172 +39,140 @@ function PlanCard({
   plan: QuotePlan
   onSelect: (plan: QuotePlan) => void
 }) {
-  const color  = plan.recommended ? '#E0232C' : (SLOT_COLOR[slot] ?? '#1CA0DF')
+  const color  = plan.recommended ? REC_COLOR : (SLOT_COLOR[slot] ?? '#2C9FD9')
   const total  = plan.total + (plan.extra_charge ?? 0)
   const price  = Math.round(total)          // integer, no dollar sign
   const isRec  = plan.recommended
 
-  return (
-    // Outer wrapper — extra top padding on non-recommended cards to
-    // leave room for the RECOMMENDED badge (which floats above the rec card)
-    <div style={{ position: 'relative', paddingTop: isRec ? 0 : 32 }}>
+  // Coverage rows — from the plan's GL limits, with a sensible fallback.
+  const rows: { label: string; value: string }[] = plan.limits.length > 0
+    ? plan.limits.map((l: PolicyLimit) => ({ label: l.gl_limit_type, value: l.gl_limit }))
+    : [
+        { label: 'Per Occurrence', value: `$${plan.min_limit} million` },
+        { label: 'Aggregate',      value: `$${plan.max_limit} million` },
+      ]
 
-      {/* ── RECOMMENDED badge ────────────────────────────────────────── */}
+  return (
+    // The recommended card sticks up (banner) and down (rounded foot) past the
+    // others; non-recommended cards get top padding so their bodies align.
+    <div style={{ position: 'relative', paddingTop: isRec ? 0 : 30 }}>
+
+      {/* ── RECOMMENDED banner (recommended only) ─────────────────────── */}
       {isRec && (
-        <div style={{ textAlign: 'center', marginBottom: 8 }}>
-          <span
-            style={{
-              display: 'inline-block',
-              backgroundColor: '#E0232C',
-              color: '#fff',
-              fontSize: 11,
-              fontWeight: 800,
-              letterSpacing: '1.5px',
-              textTransform: 'uppercase',
-              padding: '6px 20px',
-              borderRadius: 20,
-            }}
-          >
-            RECOMMENDED
-          </span>
+        <div
+          style={{
+            backgroundColor: REC_COLOR,
+            color: '#fff',
+            textAlign: 'center',
+            textTransform: 'uppercase',
+            fontWeight: 700,
+            fontSize: 13,
+            letterSpacing: '1px',
+            height: 40,
+            lineHeight: '40px',
+            borderRadius: '20px 20px 0 0',
+            boxShadow: '0 -4px 10px rgba(187,187,187,0.45)',
+          }}
+        >
+          Recommended
         </div>
       )}
 
-      {/* ── Card ─────────────────────────────────────────────────────── */}
+      {/* ── Card body (.section) ──────────────────────────────────────── */}
       <div
         style={{
-          borderRadius: 14,
-          overflow: 'hidden',
-          background: '#fff',
-          border: isRec ? '2px solid #E0232C' : '1px solid #E3E3E3',
-          boxShadow: isRec
-            ? '0 10px 32px rgba(224,35,44,0.22)'
-            : '0 2px 10px rgba(0,0,0,0.08)',
+          backgroundColor: isRec ? '#fff' : '#EFEFEF',
+          boxShadow: isRec ? '0 0 10px #bbb' : '0 0 20px #bbb',
+          borderRadius: isRec ? 0 : 10,
+          padding: '24px 18px 18px',
         }}
       >
-        {/* "BEST PLAN" label (recommended card only) */}
+        {/* "BEST PLAN" (recommended only) */}
         {isRec && (
-          <div
-            style={{
-              textAlign: 'center',
-              padding: '12px 16px 8px',
-              color: '#E0232C',
-              fontSize: 14,
-              fontWeight: 900,
-              letterSpacing: '0.5px',
-              textDecoration: 'underline',
-            }}
-          >
-            BEST PLAN
-          </div>
+          <h3 style={{ textAlign: 'center', textTransform: 'uppercase', fontWeight: 600, fontSize: 18, marginBottom: 18 }}>
+            <span style={{ color: REC_COLOR, borderBottom: `2px solid ${REC_COLOR}`, paddingBottom: 2 }}>Best Plan</span>
+          </h3>
         )}
 
-        {/* ── Colored header band ──────────────────────────────────── */}
+        {/* Colored limit header (.price) */}
         <div
           style={{
             backgroundColor: color,
-            padding: '14px 16px',
+            color: '#fff',
             textAlign: 'center',
+            fontWeight: 700,
+            fontSize: 17,
+            height: 50,
+            lineHeight: '50px',
+            borderRadius: 8,
+            marginBottom: 18,
           }}
         >
-          <p
-            style={{
-              color: '#fff',
-              fontWeight: 800,
-              fontSize: 16,
-              lineHeight: '22px',
-            }}
-          >
-            {plan.min_limit} Million / {plan.max_limit} Million
-          </p>
+          {plan.min_limit} Million / {plan.max_limit} Million
         </div>
 
-        {/* ── Coverage detail rows ─────────────────────────────────── */}
-        <div style={{ padding: '12px 18px 8px' }}>
-          {plan.limits.length > 0
-            ? plan.limits.map((l: PolicyLimit, i: number) => (
-                <div
-                  key={i}
-                  style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    padding: '5px 0',
-                    borderBottom: i < plan.limits.length - 1 ? '1px solid #F3F3F3' : 'none',
-                    fontSize: 13,
-                  }}
-                >
-                  <span style={{ color: '#505458' }}>{l.gl_limit_type}:</span>
-                  <span style={{ color: '#505458', fontWeight: 600 }}>{l.gl_limit}</span>
-                </div>
-              ))
-            : (
-              // Fallback when limits array is empty
-              <>
-                {[
-                  { label: 'Per Occurrence', value: `$${plan.min_limit} million` },
-                  { label: 'Aggregate',      value: `$${plan.max_limit} million` },
-                ].map((row, i) => (
-                  <div
-                    key={i}
-                    style={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      padding: '5px 0',
-                      fontSize: 13,
-                      borderBottom: '1px solid #F3F3F3',
-                    }}
-                  >
-                    <span style={{ color: '#505458' }}>{row.label}:</span>
-                    <span style={{ color: '#505458', fontWeight: 600 }}>{row.value}</span>
-                  </div>
-                ))}
-              </>
-            )
-          }
+        {/* Coverage rows */}
+        <ul style={{ listStyle: 'none', margin: '0 0 18px', padding: 0 }}>
+          {rows.map((row, i) => (
+            <li
+              key={i}
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                padding: '7px 0',
+                fontSize: 13.5,
+              }}
+            >
+              <span style={{ color: '#6B6B6B' }}>{row.label}:</span>
+              <span style={{ color: '#4A4A4A', fontWeight: 600 }}>{row.value}</span>
+            </li>
+          ))}
+        </ul>
+
+        {/* Colored price block (.total) */}
+        <div
+          style={{
+            backgroundColor: color,
+            color: '#fff',
+            textAlign: 'center',
+            borderRadius: 8,
+            padding: '14px 10px',
+            marginBottom: 18,
+          }}
+        >
+          <div style={{ fontSize: 13, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '1px', opacity: 0.95 }}>Price</div>
+          <div style={{ fontSize: 46, fontWeight: 700, lineHeight: 1.05 }}>{price}</div>
         </div>
 
-        {/* ── Price box ────────────────────────────────────────────── */}
-        <div style={{ padding: '0 14px 14px' }}>
-          <div
-            style={{
-              backgroundColor: color,
-              borderRadius: 10,
-              padding: '12px 16px',
-              textAlign: 'center',
-            }}
-          >
-            <p style={{ color: '#fff', fontSize: 12, fontWeight: 700, textTransform: 'uppercase', marginBottom: 4, letterSpacing: '1px' }}>
-              PRICE
-            </p>
-            <p style={{ color: '#fff', fontSize: 40, fontWeight: 900, lineHeight: 1 }}>
-              {price}
-            </p>
-          </div>
-        </div>
-
-        {/* ── Buy Now button ───────────────────────────────────────── */}
-        <div style={{ padding: '0 14px 18px' }}>
-          <button
-            type="button"
-            onClick={() => onSelect(plan)}
-            style={{
-              width: '100%',
-              height: 42,
-              borderRadius: 40,
-              border: isRec ? 'none' : '1px solid #CCCCCC',
-              backgroundColor: isRec ? '#E0232C' : 'transparent',
-              color: isRec ? '#fff' : '#505458',
-              fontWeight: 700,
-              fontSize: 14,
-              cursor: 'pointer',
-              transition: 'background-color 0.15s',
-            }}
-          >
-            Buy Now
-          </button>
-        </div>
+        {/* Buy Now — outlined (fills on hover); filled for recommended */}
+        <button
+          type="button"
+          onClick={() => onSelect(plan)}
+          onMouseEnter={(e) => { if (!isRec) { e.currentTarget.style.backgroundColor = color; e.currentTarget.style.color = '#fff' } }}
+          onMouseLeave={(e) => { if (!isRec) { e.currentTarget.style.backgroundColor = '#fff'; e.currentTarget.style.color = color } }}
+          style={{
+            display: 'block',
+            width: '100%',
+            height: 50,
+            borderRadius: 40,
+            border: `1px solid ${isRec ? REC_COLOR : color}`,
+            backgroundColor: isRec ? REC_COLOR : '#fff',
+            color: isRec ? '#fff' : color,
+            fontWeight: 700,
+            fontSize: 15,
+            cursor: 'pointer',
+            transition: 'background-color 0.2s, color 0.2s',
+          }}
+        >
+          Buy Now
+        </button>
       </div>
+
+      {/* ── Rounded foot (recommended only) ───────────────────────────── */}
+      {isRec && (
+        <div style={{ height: 26, backgroundColor: '#fff', borderRadius: '0 0 20px 20px', boxShadow: '0 16px 22px rgba(187,187,187,0.45)' }} />
+      )}
     </div>
   )
 }

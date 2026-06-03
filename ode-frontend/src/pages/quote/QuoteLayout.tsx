@@ -1,6 +1,9 @@
 import { Link } from 'react-router-dom'
 
 const TOTAL_STEPS = 10
+// Centered container width — matches the main site's quote `.container`
+// (and QuoteStepLayout's OUTER_MAX) so the header / progress / content all align.
+const OUTER_MAX = 1030
 
 interface Props {
   /** Overall wizard step: 8 = Plans, 9 = Your Info, 10 = Payment */
@@ -14,41 +17,46 @@ export default function QuoteLayout({ step, children, wide = false }: Props) {
   return (
     <div className="min-h-screen bg-white flex flex-col">
 
-      {/* ── Header ──────────────────────────────────────────────────────── */}
-      <header
-        className="flex items-center justify-between px-5 sm:px-10"
-        style={{ height: 65, marginTop: 30, marginBottom: 30, flexShrink: 0 }}
-      >
-        <Link to="/" className="flex-shrink-0">
-          <img
-            src="/assets/images/logo-img.svg"
-            alt="One Day Event"
-            style={{ height: 62, width: 'auto' }}
-          />
-        </Link>
-
-        <a
-          href="tel:8886390093"
-          style={{
-            display: 'inline-block',
-            lineHeight: '38px',
-            width: 110,
-            textAlign: 'center',
-            borderRadius: 40,
-            border: '1px solid #105778',
-            color: '#105778',
-            fontSize: 14,
-            fontWeight: 600,
-            textDecoration: 'none',
-            flexShrink: 0,
-          }}
+      {/* ── Header (inside container) ───────────────────────────────────── */}
+      <header style={{ height: 65, marginTop: 30, marginBottom: 30, flexShrink: 0 }}>
+        <div
+          className="flex items-center justify-between px-5 sm:px-8 mx-auto w-full"
+          style={{ maxWidth: OUTER_MAX, boxSizing: 'border-box' }}
         >
-          (888) 639-0093
-        </a>
+          <Link to="/" className="flex-shrink-0">
+            <img
+              src="/assets/images/logo-img.svg"
+              alt="One Day Event"
+              style={{ height: 62, width: 'auto' }}
+            />
+          </Link>
+
+          <a
+            href="tel:8886390093"
+            style={{
+              display: 'inline-block',
+              lineHeight: '38px',
+              width: 110,
+              textAlign: 'center',
+              borderRadius: 40,
+              border: '1px solid #105778',
+              color: '#105778',
+              fontSize: 14,
+              fontWeight: 600,
+              textDecoration: 'none',
+              flexShrink: 0,
+            }}
+          >
+            (888) 639-0093
+          </a>
+        </div>
       </header>
 
-      {/* ── Progress bar ─────────────────────────────────────────────────── */}
-      <div className="px-5 sm:px-10" style={{ marginBottom: 40, flexShrink: 0 }}>
+      {/* ── Progress bar (inside container) ─────────────────────────────── */}
+      <div
+        className="px-5 sm:px-8 mx-auto w-full"
+        style={{ maxWidth: OUTER_MAX, marginBottom: 40, flexShrink: 0, boxSizing: 'border-box' }}
+      >
         <div
           style={{
             background: 'rgba(28,160,221,0.1)',
@@ -76,9 +84,12 @@ export default function QuoteLayout({ step, children, wide = false }: Props) {
         </div>
       </div>
 
-      {/* ── Content ──────────────────────────────────────────────────────── */}
-      <main className="flex-1 px-4 sm:px-6 pb-16">
-        <div className={`mx-auto w-full ${wide ? 'max-w-5xl' : 'max-w-2xl'}`}>
+      {/* ── Content (inside container) ──────────────────────────────────── */}
+      <main className="flex-1 px-5 sm:px-8 pb-16">
+        <div
+          className="mx-auto w-full"
+          style={{ maxWidth: wide ? OUTER_MAX : 672, boxSizing: 'border-box' }}
+        >
           {children}
         </div>
       </main>
