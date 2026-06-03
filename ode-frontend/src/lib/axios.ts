@@ -18,13 +18,22 @@ api.interceptors.request.use((config) => {
   return config
 })
 
-// Redirect to /login on 401
+// Redirect to /login when a token expires (401 on a normal API call).
+// IMPORTANT: skip the auth endpoints — a 401 from /auth/login means "wrong
+// password" and must be handled inline by the login form, NOT trigger a hard
+// page reload (which would wipe the form and hide the error message).
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
+    const url = (error.config?.url ?? '') as string
+    const isAuthEndpoint = url.includes('/auth/login') || url.includes('/auth/register')
+
+    if (error.response?.status === 401 && !isAuthEndpoint) {
       localStorage.removeItem('ode_token')
-      window.location.href = '/login'
+      // Avoid a redirect loop if we're already on the login page.
+      if (!window.location.pathname.startsWith('/login')) {
+        window.location.href = '/login'
+      }
     }
     return Promise.reject(error)
   }
