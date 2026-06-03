@@ -4,12 +4,14 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Jobs\SendAffiliateWelcomeEmail;
+use App\Mail\NewUserCredentialsMail;
 use App\Models\User;
 use App\Models\UserRole;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
@@ -166,11 +168,28 @@ class UserController extends Controller
 
         $user->load('role:id,role_name,access_level');
 
-        // TODO: send welcome email with password reset link
+        // Email the new user their login + temporary password. Sent synchronously
+        // (like the lead "Send Email" action) so delivery doesn't depend on a queue
+        // worker. Best-effort: a mail failure must not fail user creation — the admin
+        // still sees the temp password once on screen as a fallback.
+        $emailSent = false;
+        try {
+            Mail::to($user->email)->send(new NewUserCredentialsMail($user, $tempPassword));
+            $emailSent = true;
+        } catch (\Throwable $e) {
+            Log::error('New-user credentials email failed', [
+                'user_id' => $user->id,
+                'email'   => $user->email,
+                'error'   => $e->getMessage(),
+            ]);
+        }
 
         return response()->json(array_merge(
             $this->formatUser($user),
-            ['temp_password' => $tempPassword]   // returned once; client shows to admin
+            [
+                'temp_password' => $tempPassword,  // returned once; client shows to admin
+                'email_sent'    => $emailSent,     // so the UI can confirm the email went out
+            ]
         ), 201);
     }
 

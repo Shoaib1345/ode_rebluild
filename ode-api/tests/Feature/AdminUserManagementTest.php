@@ -2,9 +2,11 @@
 
 namespace Tests\Feature;
 
+use App\Mail\NewUserCredentialsMail;
 use App\Models\User;
 use App\Models\UserRole;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Mail;
 use Tests\TestCase;
 
 /**
@@ -147,6 +149,29 @@ class AdminUserManagementTest extends TestCase
 
         $this->assertNotNull($response->json('temp_password'));
         $this->assertDatabaseHas('users', ['email' => 'jane.agent@example.com']);
+    }
+
+    public function test_creating_user_emails_temporary_password(): void
+    {
+        Mail::fake();
+
+        $admin = $this->makeUser(1);
+
+        $response = $this->actingAs($admin)->postJson('/api/admin/users', [
+            'role_id'    => $this->roleId(7),
+            'first_name' => 'Mailed',
+            'last_name'  => 'User',
+            'email'      => 'mailed.user@example.com',
+        ])->assertCreated();
+
+        $tempPassword = $response->json('temp_password');
+        $response->assertJsonPath('email_sent', true);
+
+        Mail::assertSent(NewUserCredentialsMail::class, function (NewUserCredentialsMail $mail) use ($tempPassword) {
+            return $mail->hasTo('mailed.user@example.com')
+                && $mail->temporaryPassword === $tempPassword
+                && $mail->user->email === 'mailed.user@example.com';
+        });
     }
 
     public function test_store_generates_referral_string_for_affiliate(): void

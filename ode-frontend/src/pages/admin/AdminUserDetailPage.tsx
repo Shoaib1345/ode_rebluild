@@ -54,6 +54,127 @@ function Toggle({ label, checked, onChange, disabled = false }: {
   )
 }
 
+// ─── Access Levels reference ──────────────────────────────────────────────────
+
+interface AccessLevelInfo {
+  level: number
+  name: string
+  badge: string
+  blurb: string
+  can: string[]
+  cannot?: string[]
+  note?: string
+}
+
+// Mirrors the real route guards: RequireAdminAccess (level ≤ 2) plus the
+// frontend ProtectedRoute maxLevel/exactLevel restrictions per portal.
+const ACCESS_LEVELS: AccessLevelInfo[] = [
+  {
+    level: 0, name: 'Super Admin', badge: 'bg-purple-100 text-purple-700',
+    blurb: 'Unrestricted access to the entire system.',
+    can: ['Everything an Admin can do', 'Manage all users, including admins'],
+    note: 'Cannot be created here or impersonated.',
+  },
+  {
+    level: 1, name: 'Admin', badge: 'bg-blue-100 text-blue-700',
+    blurb: 'Full admin panel access.',
+    can: [
+      'Leads, invoices, blog & CMS pages',
+      'Users / CSRs, payroll & W9 forms',
+      'Subscribers & customer support chat',
+      'Email templates & rate import',
+    ],
+  },
+  {
+    level: 2, name: 'Staff / CSR', badge: 'bg-sky-100 text-sky-700',
+    blurb: 'Day-to-day admin work.',
+    can: [
+      'Leads, invoices, blog & CMS pages',
+      'Users, payroll, W9 & subscribers',
+      'Customer support chat',
+    ],
+    cannot: ['Email templates', 'Rate import'],
+  },
+  {
+    level: 5, name: 'Customer', badge: 'bg-emerald-100 text-emerald-700',
+    blurb: 'Self-service customer portal only.',
+    can: [
+      'View policies & certificates (COI)',
+      'Pay & view invoices',
+      'Referral link & earnings',
+      'Support chat',
+    ],
+  },
+  {
+    level: 6, name: 'Affiliate', badge: 'bg-amber-100 text-amber-700',
+    blurb: 'Affiliate referral portal.',
+    can: ['Unique referral link', 'Track referrals & commissions', 'Payouts & W9'],
+  },
+  {
+    level: 7, name: 'Agent', badge: 'bg-orange-100 text-orange-700',
+    blurb: 'Sales agent portal.',
+    can: ['View & work assigned leads', 'Add lead notes', 'Track commissions'],
+  },
+  {
+    level: 8, name: 'Planner / Venue', badge: 'bg-indigo-100 text-indigo-700',
+    blurb: 'Partner referral portal.',
+    can: ['Refer clients', 'Track referrals & commissions'],
+  },
+]
+
+function AccessLevelsPanel({ selectedLevel }: { selectedLevel?: number }) {
+  return (
+    <div className="bg-white rounded-xl border border-gray-200 px-5 py-5">
+      <h2 className="text-base font-semibold text-gray-800">Access Levels</h2>
+      <p className="text-xs text-gray-400 mb-4">
+        What each role can access. The role you pick is highlighted.
+      </p>
+      <div className="space-y-2.5">
+        {ACCESS_LEVELS.map((lvl) => {
+          const active = selectedLevel === lvl.level
+          return (
+            <div
+              key={lvl.level}
+              className={`rounded-lg border px-3 py-2.5 transition-colors ${
+                active
+                  ? 'border-[#1CA0DF] bg-[#F2F9FD] ring-1 ring-[#1CA0DF]'
+                  : 'border-gray-100 bg-gray-50/60'
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${lvl.badge}`}>
+                  L{lvl.level}
+                </span>
+                <span className="text-sm font-semibold text-gray-800">{lvl.name}</span>
+              </div>
+              <p className="text-[11.5px] text-gray-500 mt-1">{lvl.blurb}</p>
+              <ul className="mt-1.5 space-y-0.5">
+                {lvl.can.map((c) => (
+                  <li key={c} className="flex items-start gap-1.5 text-[11.5px] text-gray-600">
+                    <svg className="w-3 h-3 mt-0.5 text-green-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                    </svg>
+                    <span>{c}</span>
+                  </li>
+                ))}
+                {lvl.cannot?.map((c) => (
+                  <li key={c} className="flex items-start gap-1.5 text-[11.5px] text-gray-400">
+                    <svg className="w-3 h-3 mt-0.5 text-red-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                    <span>{c}</span>
+                  </li>
+                ))}
+              </ul>
+              {lvl.note && <p className="text-[11px] text-gray-400 italic mt-1.5">{lvl.note}</p>}
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
 // ─── Create User Form ─────────────────────────────────────────────────────────
 
 function CreateUserForm({ roles }: { roles: Role[] }) {
@@ -65,14 +186,18 @@ function CreateUserForm({ roles }: { roles: Role[] }) {
     phone: '', commission_pct: '0', commission_flat: '0',
   })
   const [tempPassword, setTempPassword] = useState<string | null>(null)
+  const [emailSent, setEmailSent]       = useState(false)
+  const [createdEmail, setCreatedEmail] = useState('')
 
   const create = useMutation({
     mutationFn: (body: Record<string, unknown>) =>
-      api.post<UserDetail & { temp_password: string }>('/admin/users', body).then(r => r.data),
+      api.post<UserDetail & { temp_password: string; email_sent: boolean }>('/admin/users', body).then(r => r.data),
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['admin-users'] })
       setTempPassword(data.temp_password)
-      toast.success('User created.')
+      setEmailSent(data.email_sent)
+      setCreatedEmail(data.email)
+      toast.success(data.email_sent ? 'User created — credentials emailed.' : 'User created.')
     },
     onError: (err: unknown) => {
       const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
@@ -90,6 +215,10 @@ function CreateUserForm({ roles }: { roles: Role[] }) {
     })
   }
 
+  const selectedLevel = form.role_id
+    ? roles.find(r => r.id === parseInt(form.role_id))?.access_level
+    : undefined
+
   if (tempPassword) {
     return (
       <div className="bg-white rounded-xl border border-gray-200 px-6 py-8 max-w-lg mx-auto text-center space-y-4">
@@ -97,7 +226,17 @@ function CreateUserForm({ roles }: { roles: Role[] }) {
           <svg className="w-6 h-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/></svg>
         </div>
         <h2 className="text-lg font-bold text-gray-800">User Created</h2>
-        <p className="text-sm text-gray-500">Share this temporary password with the user. It won't be shown again.</p>
+        {emailSent ? (
+          <p className="text-sm text-gray-500">
+            A welcome email with login details was sent to{' '}
+            <span className="font-medium text-gray-700">{createdEmail}</span>.
+            You can also share the temporary password below as a backup.
+          </p>
+        ) : (
+          <p className="text-sm text-amber-600">
+            We couldn't email the credentials automatically — please share this temporary password with the user. It won't be shown again.
+          </p>
+        )}
         <div className="bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 font-mono text-lg text-gray-800 tracking-widest">
           {tempPassword}
         </div>
@@ -120,7 +259,8 @@ function CreateUserForm({ roles }: { roles: Role[] }) {
   }
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 px-6 py-6 max-w-xl">
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+    <div className="bg-white rounded-xl border border-gray-200 px-6 py-6">
       <h2 className="text-base font-semibold text-gray-800 mb-5">Create New User</h2>
       <form onSubmit={handleSubmit} className="space-y-4">
 
@@ -206,6 +346,9 @@ function CreateUserForm({ roles }: { roles: Role[] }) {
           </button>
         </div>
       </form>
+    </div>
+
+      <AccessLevelsPanel selectedLevel={selectedLevel} />
     </div>
   )
 }
