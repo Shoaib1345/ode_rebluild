@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { NavLink, Link, useNavigate, useLocation } from 'react-router-dom'
+import { useQuery } from '@tanstack/react-query'
 import { useAuth } from '../../hooks/useAuth'
 import api from '../../lib/axios'
 import toast from 'react-hot-toast'
@@ -154,10 +155,31 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const { user, logout } = useAuth()
   const navigate   = useNavigate()
   const location   = useLocation()
-  const [sidebarOpen,  setSidebarOpen]  = useState(false)
+  const [sidebarOpen,  setSidebarOpen]  = useState(false)        // mobile overlay
+  const [desktopCollapsed, setDesktopCollapsed] = useState(false) // lg+ collapse
   const [fullscreen,   setFullscreen]   = useState(false)
+  const [profileMenuOpen, setProfileMenuOpen] = useState(false)
+
+  // The hamburger toggles the mobile overlay on small screens AND collapses the
+  // fixed sidebar on desktop. Each state only takes effect at its own breakpoint
+  // (mobile overlay is lg:hidden; desktop sidebar is hidden below lg), so toggling
+  // both is safe and gives the button an effect on every screen size.
+  const toggleSidebar = () => {
+    setSidebarOpen(o => !o)
+    setDesktopCollapsed(c => !c)
+  }
   // Auto-expand Leads when any leads sub-route is active
   const [leadsOpen, setLeadsOpen] = useState(() => location.pathname.startsWith('/admin/leads'))
+
+  // Unread chat messages — drives the sidebar badge. Polls every 20s.
+  const { data: chatUnread } = useQuery({
+    queryKey: ['admin-chat-unread'],
+    queryFn: async () => {
+      const res = await api.get('/admin/chat/unread-count')
+      return res.data.unread_count as number
+    },
+    refetchInterval: 20000,
+  })
 
   const handleLogout = async () => {
     try { await api.post('/auth/logout') } catch { /* ignore */ }
@@ -267,18 +289,22 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           )}
         </div>
 
-        {/* ── Chat (expandable placeholder) ──────────────────────────── */}
-        <button
-          type="button"
-          className="flex items-center justify-between w-full px-3 py-[9px] rounded-lg text-[13px] font-medium text-[#555E6D] hover:bg-gray-100 hover:text-gray-900 transition-colors"
-          onClick={() => {}}
+        {/* ── Chat ────────────────────────────────────────────────────── */}
+        <NavLink
+          to="/admin/chat"
+          className={linkCls}
+          onClick={() => setSidebarOpen(false)}
         >
           <span className="flex items-center gap-2.5">
             <IcChat />
             Chat
           </span>
-          <IcChevron open={false} />
-        </button>
+          {chatUnread && chatUnread > 0 ? (
+            <span className="ml-auto min-w-[18px] h-[18px] px-1 bg-[#E0232C] text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+              {chatUnread}
+            </span>
+          ) : null}
+        </NavLink>
 
         {/* ── Other flat nav items ────────────────────────────────────── */}
         {TOP_NAV.filter(i => i.to !== '/admin').map((item) => (
@@ -324,7 +350,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
         {/* Hamburger */}
         <button
-          onClick={() => setSidebarOpen(o => !o)}
+          onClick={toggleSidebar}
           className="text-white/80 hover:text-white transition-colors p-1 rounded"
           aria-label="Toggle menu"
         >
@@ -368,27 +394,90 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           <button
             className="text-white/80 hover:text-white transition-colors p-2 rounded-lg hover:bg-white/10"
             aria-label="Settings"
-            onClick={() => toast('Settings coming soon', { icon: '⚙️' })}
+            onClick={() => navigate('/admin/settings')}
           >
             <IcSettings />
           </button>
 
-          {/* User avatar */}
-          <button
-            onClick={handleLogout}
-            title={`Signed in as ${user?.first_name ?? ''} — click to sign out`}
-            className="ml-1 w-9 h-9 rounded-full bg-white/20 hover:bg-white/30 transition-colors flex items-center justify-center text-white text-sm font-bold flex-shrink-0 border border-white/30"
-          >
-            {avatarInitials}
-          </button>
+          {/* User avatar + profile menu */}
+          <div className="relative ml-1">
+            <button
+              onClick={() => setProfileMenuOpen((o) => !o)}
+              title={`Signed in as ${user?.first_name ?? ''}`}
+              aria-haspopup="menu"
+              aria-expanded={profileMenuOpen}
+              className="w-9 h-9 rounded-full bg-white/20 hover:bg-white/30 transition-colors flex items-center justify-center text-white text-sm font-bold flex-shrink-0 border border-white/30"
+            >
+              {avatarInitials}
+            </button>
+
+            {profileMenuOpen && (
+              <>
+                {/* Click-away backdrop */}
+                <div className="fixed inset-0 z-40" onClick={() => setProfileMenuOpen(false)} />
+
+                <div
+                  role="menu"
+                  className="absolute right-0 mt-2 w-60 bg-white rounded-xl shadow-lg border border-gray-100 py-2 z-50"
+                >
+                  {/* Header */}
+                  <div className="px-4 py-2.5 border-b border-gray-100 flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-full bg-[#1CA0DF] flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
+                      {avatarInitials}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-gray-800 truncate">{user?.first_name} {user?.last_name}</p>
+                      <p className="text-[11px] text-gray-400 truncate">{user?.email}</p>
+                    </div>
+                  </div>
+
+                  <button
+                    role="menuitem"
+                    onClick={() => { setProfileMenuOpen(false); navigate('/admin/settings?tab=profile') }}
+                    className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2.5"
+                  >
+                    <svg className="w-[18px] h-[18px] text-gray-400" fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.5 19.5a7.5 7.5 0 0115 0v.75H4.5v-.75z"/></svg>
+                    My Profile
+                  </button>
+                  <button
+                    role="menuitem"
+                    onClick={() => { setProfileMenuOpen(false); navigate('/admin/settings?tab=security') }}
+                    className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2.5"
+                  >
+                    <svg className="w-[18px] h-[18px] text-gray-400" fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z"/></svg>
+                    Change Password
+                  </button>
+                  <button
+                    role="menuitem"
+                    onClick={() => { setProfileMenuOpen(false); navigate('/admin/settings') }}
+                    className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2.5"
+                  >
+                    <IcSettings />
+                    Account Settings
+                  </button>
+
+                  <div className="border-t border-gray-100 mt-1 pt-1">
+                    <button
+                      role="menuitem"
+                      onClick={() => { setProfileMenuOpen(false); handleLogout() }}
+                      className="w-full text-left px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2.5"
+                    >
+                      <svg className="w-[18px] h-[18px]" fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l-3 3m0 0l3 3m-3-3h12.75"/></svg>
+                      Sign out
+                    </button>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
         </div>
       </header>
 
       {/* ── Sidebar + content ───────────────────────────────────────────────── */}
       <div className="flex pt-[60px] min-h-screen">
 
-        {/* Desktop sidebar — always visible lg+ */}
-        <aside className="hidden lg:flex flex-col w-[220px] bg-white border-r border-gray-200 fixed top-[60px] bottom-0 left-0 z-30 overflow-y-auto">
+        {/* Desktop sidebar — visible lg+, collapsible via the hamburger */}
+        <aside className={`${desktopCollapsed ? 'hidden' : 'hidden lg:flex'} flex-col w-[220px] bg-white border-r border-gray-200 fixed top-[60px] bottom-0 left-0 z-30 overflow-y-auto`}>
           {sidebarBody}
         </aside>
 
@@ -405,8 +494,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           </div>
         )}
 
-        {/* Main content */}
-        <main className="flex-1 lg:pl-[220px] min-h-screen">
+        {/* Main content — shifts to fill the space when the sidebar collapses */}
+        <main className={`flex-1 min-h-screen transition-all duration-200 ${desktopCollapsed ? 'lg:pl-0' : 'lg:pl-[220px]'}`}>
           <div className="p-5 lg:p-7">
             {children}
           </div>
