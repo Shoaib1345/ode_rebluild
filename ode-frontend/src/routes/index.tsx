@@ -45,6 +45,8 @@ const LeadDetailPage      = lazy(() => import('../pages/admin/LeadDetailPage'))
 const InvoicesPage        = lazy(() => import('../pages/admin/InvoicesPage'))
 const InvoiceCreatePage   = lazy(() => import('../pages/admin/InvoiceCreatePage'))
 const InvoiceDetailPage   = lazy(() => import('../pages/admin/InvoiceDetailPage'))
+const AdminChatPage       = lazy(() => import('../pages/admin/AdminChatPage'))
+const AdminSettingsPage   = lazy(() => import('../pages/admin/AdminSettingsPage'))
 
 // Affiliate
 const AffiliateSignupPage  = lazy(() => import('../pages/affiliate/AffiliateSignupPage'))
@@ -59,6 +61,7 @@ const CustomerDashboard      = lazy(() => import('../pages/customer/CustomerDash
 const CustomerEventsPage     = lazy(() => import('../pages/customer/CustomerEventsPage'))
 const CustomerInvoicesPage   = lazy(() => import('../pages/customer/CustomerInvoicesPage'))
 const CustomerReferralPage   = lazy(() => import('../pages/customer/CustomerReferralPage'))
+const CustomerChatPage       = lazy(() => import('../pages/customer/CustomerChatPage'))
 const CommissionsTab         = lazy(() => import('../components/commission/CommissionsTab'))
 
 // Agent Portal
@@ -175,6 +178,8 @@ export default function AppRoutes() {
         <Route path="/admin/leads/my"           element={<ProtectedRoute maxLevel={2}><LeadsPage viewFilter="my_leads" /></ProtectedRoute>} />
         {/* Lead detail — dynamic :id comes AFTER all static sub-routes */}
         <Route path="/admin/leads/:id"          element={<ProtectedRoute maxLevel={2}><LeadDetailPage /></ProtectedRoute>} />
+        <Route path="/admin/chat"               element={<ProtectedRoute maxLevel={2}><AdminChatPage /></ProtectedRoute>} />
+        <Route path="/admin/settings"           element={<ProtectedRoute maxLevel={2}><AdminSettingsPage /></ProtectedRoute>} />
         <Route path="/admin/invoices"           element={<ProtectedRoute maxLevel={2}><InvoicesPage /></ProtectedRoute>} />
         <Route path="/admin/invoices/new"       element={<ProtectedRoute maxLevel={2}><InvoiceCreatePage /></ProtectedRoute>} />
         <Route path="/admin/invoices/:id"       element={<ProtectedRoute maxLevel={2}><InvoiceDetailPage /></ProtectedRoute>} />
@@ -209,6 +214,7 @@ export default function AppRoutes() {
           <Route index            element={<CustomerDashboard />} />
           <Route path="events"    element={<CustomerEventsPage />} />
           <Route path="invoices"  element={<CustomerInvoicesPage />} />
+          <Route path="support"   element={<CustomerChatPage />} />
           <Route path="refer"     element={<CustomerReferralPage />} />
           <Route path="commissions" element={<CommissionsTab />} />
         </Route>

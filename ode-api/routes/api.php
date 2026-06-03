@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Admin\ChatController;
 use App\Http\Controllers\Admin\DocuSignController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\LeadAssignmentController;
@@ -15,6 +16,7 @@ use App\Http\Controllers\Admin\SubscriberController as AdminSubscriberController
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Affiliate\PortalController;
 use App\Http\Controllers\AffiliateController;
+use App\Http\Controllers\AccountController;
 use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\BlogController;
 use App\Http\Controllers\CommissionController;
@@ -108,6 +110,10 @@ Route::get('/blog/{slug}',   [BlogController::class, 'show']);
 // ─── Protected Routes ────────────────────────────────────────────────────────
 Route::middleware('auth:sanctum')->group(function () {
 
+    // ── Account (self-service profile + password for any authenticated user) ──
+    Route::patch('/account',          [AccountController::class, 'update']);
+    Route::post('/account/password',  [AccountController::class, 'changePassword']);
+
     // ── Admin ────────────────────────────────────────────────────────────────
     Route::middleware('admin')->prefix('admin')->group(function () {
         // Dashboard
@@ -132,6 +138,14 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/leads/{id}/files',             [LeadController::class, 'storeFile']);
         Route::post('/leads/{id}/follow-ups',        [LeadController::class, 'storeFollowUp']);
         Route::post('/leads/{id}/email',             [LeadController::class, 'sendEmail']);
+
+        // Customer / lead support chat
+        Route::get('/chat',                  [ChatController::class, 'conversations']);
+        Route::get('/chat/unread-count',     [ChatController::class, 'unreadCount']);
+        Route::get('/chat/{leadId}',         [ChatController::class, 'thread']);
+        Route::post('/chat/{leadId}',        [ChatController::class, 'send']);
+        Route::patch('/chat/{leadId}/settings',              [ChatController::class, 'updateSettings']);
+        Route::delete('/chat/{leadId}/messages/{messageId}', [ChatController::class, 'deleteMessage']);
 
         // Blog admin
         Route::get('/blog',           [BlogController::class, 'adminIndex']);
@@ -237,6 +251,8 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/events/{id}/certificate',[CustomerPortalController::class, 'certificate']);
         Route::get('/invoices',               [CustomerPortalController::class, 'invoices']);
         Route::get('/referral-link',          [CustomerPortalController::class, 'referralLink']);
+        Route::get('/messages',               [CustomerPortalController::class, 'messages']);
+        Route::post('/messages',              [CustomerPortalController::class, 'sendMessage']);
     });
 
     // ── File downloads — any authenticated user ──────────────────────────────
