@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Customer;
 use App\Http\Controllers\Controller;
 use App\Models\Invoice;
 use App\Models\Lead;
+use App\Models\LeadMessage;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -257,7 +258,131 @@ class PortalController extends Controller
         ]);
     }
 
+    // ── Support chat ───────────────────────────────────────────────────────────
+
+    /**
+     * GET /api/customer/messages
+     *
+     * The customer's support conversation. Anchored to their most recent lead
+     * (or ?lead_id= if they own it). Opening the thread marks every outbound
+     * (admin → customer) message read.
+     */
+    public function messages(Request $request): JsonResponse
+    {
+        $request->validate([
+            'lead_id' => ['nullable', 'integer'],
+        ]);
+
+        $lead = $this->resolveChatLead($request);
+
+        if (! $lead) {
+            return response()->json([
+                'lead_id'    => null,
+                'is_blocked' => false,
+                'is_closed'  => false,
+                'messages'   => [],
+            ]);
+        }
+
+        // Opening the conversation clears the outbound unread state (visible msgs only).
+        $lead->messages()
+             ->visibleToCustomer()
+             ->where('direction', LeadMessage::DIRECTION_OUT)
+             ->whereNull('read_at')
+             ->update(['read_at' => now()]);
+
+        // Internal admin notes are never exposed to the customer.
+        $messages = $lead->messages()
+            ->visibleToCustomer()
+            ->orderBy('created_at')
+            ->get()
+            ->map(fn (LeadMessage $m) => [
+                'id'         => $m->id,
+                'direction'  => $m->direction,
+                'body'       => $m->body,
+                'created_at' => $m->created_at->toIso8601String(),
+            ]);
+
+        return response()->json([
+            'lead_id'    => $lead->id,
+            'is_blocked' => (bool) $lead->is_chat_blocked,
+            'is_closed'  => $lead->chat_closed_at !== null,
+            'messages'   => $messages,
+        ]);
+    }
+
+    /**
+     * POST /api/customer/messages
+     *
+     * Send an inbound support message. Attaches to the customer's most recent
+     * lead (or ?lead_id= if they own it).
+     */
+    public function sendMessage(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'body'    => ['required', 'string', 'max:5000'],
+            'lead_id' => ['nullable', 'integer'],
+        ]);
+
+        $lead = $this->resolveChatLead($request);
+
+        if (! $lead) {
+            return response()->json([
+                'message' => 'No event found to attach your message to. Please get a quote first.',
+            ], 422);
+        }
+
+        // Admin can disable a customer's chat entirely.
+        if ($lead->is_chat_blocked) {
+            return response()->json([
+                'message' => 'Chat is currently unavailable for your account. Please email support@onedayevent.com.',
+            ], 403);
+        }
+
+        $message = $lead->messages()->create([
+            'user_id'   => $request->user()->id,
+            'direction' => LeadMessage::DIRECTION_IN,
+            'body'      => $data['body'],
+        ]);
+
+        // A customer reply reopens a previously closed conversation.
+        if ($lead->chat_closed_at !== null) {
+            $lead->update(['chat_closed_at' => null]);
+        }
+
+        return response()->json([
+            'id'         => $message->id,
+            'lead_id'    => $lead->id,
+            'direction'  => $message->direction,
+            'body'       => $message->body,
+            'created_at' => $message->created_at->toIso8601String(),
+        ], 201);
+    }
+
     // ── Private helpers ────────────────────────────────────────────────────────
+
+    /**
+     * Resolve the lead that anchors this customer's support conversation.
+     *
+     * Honours ?lead_id= when the customer owns that lead; otherwise falls back to
+     * their most recent lead. Returns null if the customer has no leads at all.
+     */
+    private function resolveChatLead(Request $request): ?Lead
+    {
+        $leadIds = $this->customerLeadIds($request->user());
+
+        if (empty($leadIds)) {
+            return null;
+        }
+
+        $requested = $request->input('lead_id');
+
+        if ($requested && in_array((int) $requested, array_map('intval', $leadIds), true)) {
+            return Lead::find((int) $requested);
+        }
+
+        return Lead::whereIn('id', $leadIds)->latest('id')->first();
+    }
 
     /**
      * Collect all lead IDs that belong to this customer.

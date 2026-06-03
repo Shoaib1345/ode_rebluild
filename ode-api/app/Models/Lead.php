@@ -95,6 +95,8 @@ class Lead extends Model
         'post_event_email_sent',
         'seven_day_reminder_sent',
         'is_on_hold',
+        'is_chat_blocked',
+        'chat_closed_at',
         'is_priority_lead',
         'commission_status',
         'requoted_id',
@@ -125,6 +127,8 @@ class Lead extends Model
             'post_event_email_sent'    => 'boolean',
             'seven_day_reminder_sent'  => 'boolean',
             'is_on_hold'               => 'boolean',
+            'is_chat_blocked'          => 'boolean',
+            'chat_closed_at'           => 'datetime',
             'is_priority_lead'    => 'boolean',
             'lead_offered_plans'  => 'array',
             'additional_insured_details' => 'array',
@@ -163,6 +167,11 @@ class Lead extends Model
     public function emails(): HasMany
     {
         return $this->hasMany(LeadEmail::class);
+    }
+
+    public function messages(): HasMany
+    {
+        return $this->hasMany(LeadMessage::class);
     }
 
     public function files(): HasMany
