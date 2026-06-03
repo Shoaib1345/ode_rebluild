@@ -738,6 +738,15 @@ function LeadDetailInner() {
   const [noteText, setNoteText] = useState('')
   const noteRef = useRef<HTMLTextAreaElement>(null)
 
+  // ── Referrer + Plan modal state ───────────────────────────────────────────
+  const [referrerOpen,   setReferrerOpen]   = useState(false)
+  const [referrerRole,   setReferrerRole]   = useState<'affiliate' | 'planner' | 'customer'>('affiliate')
+  const [referrerSearch, setReferrerSearch] = useState('')
+  const [planOpen, setPlanOpen] = useState(false)
+  const [planForm, setPlanForm] = useState({
+    carrier: '', min_limit: '', max_limit: '', premium: '', broker_fee: '', processing_fee: '', total: '',
+  })
+
   // ── Queries ───────────────────────────────────────────────────────────────
   const { data: lead, isLoading, isError } = useQuery({
     queryKey: ['admin-lead', id],
@@ -774,6 +783,14 @@ function LeadDetailInner() {
     staleTime: 5 * 60 * 1000,
   })
 
+  // Referrer candidates — searched by role + name/email when the modal is open.
+  const { data: referrerCandidates = [] } = useQuery<{ id: number; first_name: string; last_name: string; email: string }[]>({
+    queryKey: ['referrer-candidates', referrerRole, referrerSearch],
+    queryFn:  () => api.get('/admin/users', { params: { role: referrerRole, search: referrerSearch, per_page: 8 } })
+                       .then(r => r.data.data ?? r.data),
+    enabled:  referrerOpen && referrerSearch.trim().length >= 2,
+  })
+
   const assignedIds     = useMemo(() => new Set((assignments?.assignees ?? []).map(a => a.id)), [assignments])
   const unassignedUsers = useMemo(() => assignableUsers.filter(u => !assignedIds.has(u.id)), [assignableUsers, assignedIds])
 
@@ -787,6 +804,65 @@ function LeadDetailInner() {
     },
     onError: () => toast.error('Update failed.'),
   })
+
+  // ── Referrer handlers ─────────────────────────────────────────────────────
+  const setReferrer = (userId: number) => {
+    const key = referrerRole === 'affiliate' ? 'referred_by_affiliate_id'
+      : referrerRole === 'planner' ? 'referred_by_planner_id' : 'referred_by_customer_id'
+    patch.mutate(
+      { referred_by_affiliate_id: null, referred_by_planner_id: null, referred_by_customer_id: null, [key]: userId },
+      { onSuccess: () => setReferrerOpen(false) },
+    )
+  }
+  const removeReferrer = () =>
+    patch.mutate(
+      { referred_by_affiliate_id: null, referred_by_planner_id: null, referred_by_customer_id: null },
+      { onSuccess: () => setReferrerOpen(false) },
+    )
+
+  // ── Plan handlers ─────────────────────────────────────────────────────────
+  const openPlan = () => {
+    const p = (lead?.lead_offered_plans ?? {}) as Record<string, unknown>
+    const s = (v: unknown) => (v != null ? String(v) : '')
+    setPlanForm({
+      carrier:        lead?.carrier ?? s(p.carrier),
+      min_limit:      s(p.min_limit),
+      max_limit:      s(p.max_limit),
+      premium:        s(p.premium),
+      broker_fee:     s(p.broker_fee),
+      processing_fee: s(p.processing_fee),
+      total:          s(p.total),
+    })
+    setPlanOpen(true)
+  }
+  const savePlan = () => {
+    const num = (v: string) => (v.trim() === '' ? null : Number(v))
+    patch.mutate(
+      {
+        carrier: planForm.carrier || null,
+        coverage_limit: planForm.min_limit && planForm.max_limit ? `${planForm.min_limit}/${planForm.max_limit}` : null,
+        lead_offered_plans: {
+          carrier:        planForm.carrier || null,
+          min_limit:      num(planForm.min_limit),
+          max_limit:      num(planForm.max_limit),
+          premium:        num(planForm.premium),
+          broker_fee:     num(planForm.broker_fee),
+          processing_fee: num(planForm.processing_fee),
+          total:          num(planForm.total),
+        },
+      },
+      { onSuccess: () => setPlanOpen(false) },
+    )
+  }
+
+  const copyBilling = () => {
+    if (!lead) return
+    copyToClipboard([
+      `${lead.first_name ?? ''} ${lead.last_name ?? ''}`.trim(),
+      lead.street, [lead.city, lead.event_state, lead.zip].filter(Boolean).join(', '),
+      lead.email, lead.phone,
+    ].filter(Boolean).join('\n'))
+  }
 
   const addNote = useMutation({
     mutationFn: (message: string) => api.post<Note>(`/admin/leads/${id}/notes`, { message }).then(r => r.data),
@@ -1085,13 +1161,13 @@ function LeadDetailInner() {
             <Row4 l1="Zipcode"               v1={v(lead.venue_zip)} />
 
             {/* ── Insured Details ───────────────────────────────────────── */}
-            <SectionTitle action={<BadgeBtn>Copy Billing Details</BadgeBtn>}>Insured Details</SectionTitle>
+            <SectionTitle action={<BadgeBtn onClick={copyBilling}>Copy Billing Details</BadgeBtn>}>Insured Details</SectionTitle>
             <Row4 l1="First Name" v1={v(lead.ins_first_name)} l2="Last Name" v2={v(lead.ins_last_name)} />
             <Row4 l1="Street"     v1={v(lead.ins_street)}     l2="City"      v2={v(lead.ins_city)} />
             <Row4 l1="State"      v1={v(lead.ins_state)}      l2="Zipcode"   v2={v(lead.ins_zip)} />
 
             {/* ── Referrer Details ──────────────────────────────────────── */}
-            <SectionTitle action={<BadgeBtn>{referralUser ? 'Edit Referrer' : 'Add Referrer'}</BadgeBtn>}>
+            <SectionTitle action={<BadgeBtn onClick={() => { setReferrerSearch(''); setReferrerOpen(true) }}>{referralUser ? 'Edit Referrer' : 'Add Referrer'}</BadgeBtn>}>
               Referrer Details
             </SectionTitle>
             {lead.referred_by_affiliate ? (
@@ -1152,7 +1228,7 @@ function LeadDetailInner() {
             {/* ── Event Descriptions ────────────────────────────────────── */}
             {lead.event_description && (
               <>
-                <SectionTitle action={<BadgeBtn>Add Event Description</BadgeBtn>}>Event Descriptions</SectionTitle>
+                <SectionTitle action={<BadgeBtn onClick={openEdit}>Add Event Description</BadgeBtn>}>Event Descriptions</SectionTitle>
                 <p className="text-sm text-gray-700 whitespace-pre-wrap py-2">{lead.event_description}</p>
               </>
             )}
@@ -1173,7 +1249,7 @@ function LeadDetailInner() {
             {/* ── Plan Selected Details ─────────────────────────────────── */}
             {plan ? (
               <>
-                <SectionTitle action={<BadgeBtn>Update Plan</BadgeBtn>}>Plan Selected Details</SectionTitle>
+                <SectionTitle action={<BadgeBtn onClick={openPlan}>Update Plan</BadgeBtn>}>Plan Selected Details</SectionTitle>
 
                 {/* Row 1: Carrier | Min Limit | Max Limit | Total Payment */}
                 <Row4
@@ -1212,7 +1288,7 @@ function LeadDetailInner() {
               </>
             ) : (
               <>
-                <SectionTitle action={<BadgeBtn>Add Plan</BadgeBtn>}>Plan Selected Details</SectionTitle>
+                <SectionTitle action={<BadgeBtn onClick={openPlan}>Add Plan</BadgeBtn>}>Plan Selected Details</SectionTitle>
                 <p className="text-sm text-gray-500 py-2">No plan selected yet.</p>
               </>
             )}
@@ -1449,6 +1525,74 @@ function LeadDetailInner() {
         <div className="px-5 py-3 border-t border-gray-100 flex justify-end">
           <button type="button" onClick={() => setAssignModalOpen(false)}
             className="px-4 py-2 text-sm text-gray-600 border border-gray-300 rounded hover:bg-gray-50">Done</button>
+        </div>
+      </Modal>
+
+      {/* ══ REFERRER MODAL ══════════════════════════════════════════════ */}
+      <Modal open={referrerOpen} onClose={() => setReferrerOpen(false)} title={referralUser ? 'Edit Referrer' : 'Add Referrer'}>
+        <div className="px-5 py-4">
+          {referralUser && (
+            <div className="mb-4 flex items-center justify-between bg-gray-50 border border-gray-200 rounded px-3 py-2">
+              <div>
+                <p className="text-sm font-medium text-gray-800">{referralUser.first_name} {referralUser.last_name}</p>
+                <p className="text-xs text-gray-400">{referralUser.email}</p>
+              </div>
+              <button type="button" onClick={removeReferrer} disabled={patch.isPending}
+                className="text-red-400 hover:text-red-600 text-sm font-medium disabled:opacity-40">Remove</button>
+            </div>
+          )}
+          <FormField label="Referrer type">
+            <select value={referrerRole} onChange={e => setReferrerRole(e.target.value as 'affiliate' | 'planner' | 'customer')} className={inputCls}>
+              <option value="affiliate">Affiliate</option>
+              <option value="planner">Planner / Venue</option>
+              <option value="customer">Customer</option>
+            </select>
+          </FormField>
+          <FormField label="Search by name or email">
+            <input value={referrerSearch} onChange={e => setReferrerSearch(e.target.value)} placeholder="Type at least 2 characters…" className={inputCls} />
+          </FormField>
+          <div className="max-h-56 overflow-y-auto border border-gray-100 rounded">
+            {referrerSearch.trim().length < 2 ? (
+              <p className="text-sm text-gray-400 px-3 py-3">Start typing to search {referrerRole}s.</p>
+            ) : referrerCandidates.length === 0 ? (
+              <p className="text-sm text-gray-400 px-3 py-3">No matching {referrerRole}s.</p>
+            ) : referrerCandidates.map(u => (
+              <button key={u.id} type="button" onClick={() => setReferrer(u.id)} disabled={patch.isPending}
+                className="w-full text-left px-3 py-2 hover:bg-green-50 border-b border-gray-50 last:border-0 disabled:opacity-40">
+                <p className="text-sm font-medium text-gray-800">{u.first_name} {u.last_name}</p>
+                <p className="text-xs text-gray-400">{u.email}</p>
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="px-5 py-3 border-t border-gray-100 flex justify-end">
+          <button type="button" onClick={() => setReferrerOpen(false)} className="px-4 py-2 text-sm text-gray-600 border border-gray-300 rounded hover:bg-gray-50">Done</button>
+        </div>
+      </Modal>
+
+      {/* ══ UPDATE PLAN MODAL ════════════════════════════════════════════ */}
+      <Modal open={planOpen} onClose={() => setPlanOpen(false)} title="Update Plan">
+        <div className="px-5 py-4">
+          <FormField label="Carrier">
+            <select value={planForm.carrier} onChange={e => setPlanForm(f => ({ ...f, carrier: e.target.value }))} className={inputCls}>
+              <option value="">Select carrier…</option>
+              <option value="ASI">ASI</option>
+              <option value="FDEAN">FDEAN</option>
+              <option value="IH">IH</option>
+            </select>
+          </FormField>
+          <div className="grid grid-cols-2 gap-3">
+            <FormField label="Min limit (M)"><input type="number" value={planForm.min_limit} onChange={e => setPlanForm(f => ({ ...f, min_limit: e.target.value }))} className={inputCls} /></FormField>
+            <FormField label="Max limit (M)"><input type="number" value={planForm.max_limit} onChange={e => setPlanForm(f => ({ ...f, max_limit: e.target.value }))} className={inputCls} /></FormField>
+            <FormField label="Premium"><input type="number" value={planForm.premium} onChange={e => setPlanForm(f => ({ ...f, premium: e.target.value }))} className={inputCls} /></FormField>
+            <FormField label="Broker fee"><input type="number" value={planForm.broker_fee} onChange={e => setPlanForm(f => ({ ...f, broker_fee: e.target.value }))} className={inputCls} /></FormField>
+            <FormField label="Processing fee"><input type="number" value={planForm.processing_fee} onChange={e => setPlanForm(f => ({ ...f, processing_fee: e.target.value }))} className={inputCls} /></FormField>
+            <FormField label="Total"><input type="number" value={planForm.total} onChange={e => setPlanForm(f => ({ ...f, total: e.target.value }))} className={inputCls} /></FormField>
+          </div>
+        </div>
+        <div className="px-5 py-3 border-t border-gray-100 flex justify-end gap-2">
+          <button type="button" onClick={() => setPlanOpen(false)} className="px-4 py-2 text-sm text-gray-600 border border-gray-300 rounded hover:bg-gray-50">Cancel</button>
+          <button type="button" onClick={savePlan} disabled={patch.isPending} className="px-4 py-2 text-sm bg-green-500 hover:bg-green-600 text-white font-medium rounded disabled:opacity-40">{patch.isPending ? 'Saving…' : 'Save Plan'}</button>
         </div>
       </Modal>
 
