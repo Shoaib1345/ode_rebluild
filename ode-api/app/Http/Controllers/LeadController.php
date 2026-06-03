@@ -273,6 +273,21 @@ class LeadController extends Controller
             'waiver_sub_status'  => ['sometimes', 'boolean'],
             'hired_status'       => ['sometimes', 'boolean'],
             'primary_basis'      => ['sometimes', 'boolean'],
+
+            // ── Referral attribution (Add / Edit Referrer) ────────────────────
+            'referred_by_affiliate_id' => ['sometimes', 'nullable', 'integer', 'exists:users,id'],
+            'referred_by_planner_id'   => ['sometimes', 'nullable', 'integer', 'exists:users,id'],
+            'referred_by_customer_id'  => ['sometimes', 'nullable', 'integer', 'exists:users,id'],
+
+            // ── Plan snapshot (Update Plan) ───────────────────────────────────
+            'lead_offered_plans'           => ['sometimes', 'nullable', 'array'],
+            'lead_offered_plans.carrier'   => ['sometimes', 'nullable', 'string', 'max:50'],
+            'lead_offered_plans.premium'   => ['sometimes', 'nullable', 'numeric', 'min:0'],
+            'lead_offered_plans.broker_fee'=> ['sometimes', 'nullable', 'numeric', 'min:0'],
+            'lead_offered_plans.processing_fee' => ['sometimes', 'nullable', 'numeric', 'min:0'],
+            'lead_offered_plans.total'     => ['sometimes', 'nullable', 'numeric', 'min:0'],
+            'lead_offered_plans.min_limit' => ['sometimes', 'nullable', 'integer'],
+            'lead_offered_plans.max_limit' => ['sometimes', 'nullable', 'integer'],
         ]);
 
         $lead->update($data);
@@ -430,25 +445,35 @@ class LeadController extends Controller
 
         $sender = $request->user();
 
-        Mail::html($data['message'], function ($msg) use ($data, $sender, $lead) {
-            $msg->to($data['to'])
-                ->subject($data['subject'])
-                ->from(config('mail.from.address'), config('mail.from.name'))
-                ->replyTo($sender->email ?? config('mail.from.address'), $sender->first_name . ' ' . $sender->last_name);
+        try {
+            Mail::html($data['message'], function ($msg) use ($data, $sender, $lead) {
+                $msg->to($data['to'])
+                    ->subject($data['subject'])
+                    ->from(config('mail.from.address'), config('mail.from.name'))
+                    ->replyTo($sender->email ?? config('mail.from.address'), $sender->first_name . ' ' . $sender->last_name);
 
-            if (! empty($data['cc'])) {
-                foreach (array_map('trim', explode(',', $data['cc'])) as $cc) {
-                    if ($cc) $msg->cc($cc);
+                if (! empty($data['cc'])) {
+                    foreach (array_map('trim', explode(',', $data['cc'])) as $cc) {
+                        if ($cc) $msg->cc($cc);
+                    }
                 }
-            }
-            if (! empty($data['bcc'])) {
-                foreach (array_map('trim', explode(',', $data['bcc'])) as $bcc) {
-                    if ($bcc) $msg->bcc($bcc);
+                if (! empty($data['bcc'])) {
+                    foreach (array_map('trim', explode(',', $data['bcc'])) as $bcc) {
+                        if ($bcc) $msg->bcc($bcc);
+                    }
                 }
-            }
-        });
+            });
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('Lead email send failed', [
+                'lead_id' => $lead->id,
+                'error'   => $e->getMessage(),
+            ]);
+            return response()->json([
+                'message' => 'Could not send the email. Please check the mail settings and try again.',
+            ], 422);
+        }
 
-        // Log as a structured lead action
+        // Log as a structured lead action (only after a successful send)
         LeadAction::log(
             $lead->id,
             LeadAction::EMAIL_SENT,
