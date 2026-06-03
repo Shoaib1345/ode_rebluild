@@ -103,6 +103,14 @@ class PricingEngine
      */
     public function assignTiers(Collection $priced): array
     {
+        // De-duplicate by coverage limits — keep the cheapest plan per
+        // (min_limit, max_limit) pair so we never surface two cards with
+        // identical limits (which also skews the recommendation).
+        $priced = $priced
+            ->sortBy('total')
+            ->unique(fn ($p) => ((int) $p['min_limit']) . '/' . ((int) $p['max_limit']))
+            ->values();
+
         $used    = collect();
         $options = [];
 

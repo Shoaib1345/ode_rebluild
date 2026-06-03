@@ -269,4 +269,33 @@ class QuotePricingTest extends TestCase
         $this->assertNull($plans['thirdOption']);
         $this->assertNull($plans['fourthOption']);
     }
+
+    // ── Scenario 10: de-dup identical limit pairs, recommendation on slot 2 ─────
+
+    public function test_dedupes_plans_by_limit_pair_and_recommends_second(): void
+    {
+        // Mirrors the real case: 1M/2M @166, 1M/5M @161 (×2 dup), 2M/3M @292.
+        $type = EventType::create(['event_type' => 'Birthday Party', 'client_added' => false]);
+        $this->makeRate($type->id, 'FDEAN', 130, 1, 2);   // total 166
+        $this->makeRate($type->id, 'FDEAN', 125, 1, 5);   // cheaper 1M/5M → total 161
+        $this->makeRate($type->id, 'ASI',   140, 1, 5);   // pricier 1M/5M (dup limits)
+        $this->makeRate($type->id, 'FDEAN', 225, 2, 3);   // total 292
+
+        $plans = $this->quote()->getQuote($this->baseParams($type->id));
+
+        // No two surfaced plans share the same limit pair.
+        $pairs = collect($plans)->filter()
+            ->map(fn ($p) => $p['min_limit'] . '/' . $p['max_limit'])->values()->all();
+        $this->assertSame(count($pairs), count(array_unique($pairs)));
+
+        // The surfaced 1M/5M is the cheaper one (161, not the ASI dup).
+        $oneFive = collect($plans)->filter()
+            ->firstWhere(fn ($p) => $p['min_limit'] === 1 && $p['max_limit'] === 5);
+        $this->assertNotNull($oneFive);
+        $this->assertEquals(161, $oneFive['total']);
+
+        // The recommended plan sits in the second slot (the 1M/5M value pick).
+        $this->assertTrue($plans['secondOption']['recommended']);
+        $this->assertEquals([1, 5], [$plans['secondOption']['min_limit'], $plans['secondOption']['max_limit']]);
+    }
 }
