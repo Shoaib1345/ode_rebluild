@@ -54,10 +54,15 @@ class AffiliateController extends Controller
 
         $user->load('role');
 
-        // No token is issued until an admin approves the application. The welcome
-        // email is sent on approval (see Admin\UserController::approve).
+        // Issue a token so the applicant can immediately access their portal and
+        // track approval status. They remain status=0 (pending) until an admin
+        // approves — the portal shows a "under review" screen until then. The
+        // welcome email is sent on approval (see Admin\UserController::approve).
+        $token = $user->createToken('auth_token')->plainTextToken;
+
         return response()->json([
-            'message' => 'Thanks for applying! Your affiliate account is pending approval — we\'ll email you once it\'s active.',
+            'message' => 'Thanks for applying! Your affiliate account is pending approval — track your status in your portal.',
+            'token'   => $token,
             'user'    => [
                 'id'               => $user->id,
                 'first_name'       => $user->first_name,

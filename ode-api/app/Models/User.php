@@ -15,6 +15,11 @@ class User extends Authenticatable
 {
     use HasApiTokens, HasFactory, Notifiable, SoftDeletes;
 
+    // Account status (e.g. affiliate approval workflow).
+    public const STATUS_PENDING  = 0;  // awaiting admin approval
+    public const STATUS_ACTIVE   = 1;  // approved / active
+    public const STATUS_REJECTED = 2;  // application declined
+
     protected $fillable = [
         'agency_id',
         'role_id',

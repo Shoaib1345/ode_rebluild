@@ -472,9 +472,9 @@ function ComingSoon({ title }: { title: string }) {
   )
 }
 
-// ─── Main component ───────────────────────────────────────────────────────────
+// ─── Approved portal ──────────────────────────────────────────────────────────
 
-export default function AffiliateDashboard() {
+function AffiliatePortal() {
   const [section, setSection] = useState<Section>('home')
   const { user, logout }      = useAuth()
   const navigate              = useNavigate()
@@ -563,4 +563,201 @@ export default function AffiliateDashboard() {
       </div>
     </div>
   )
+}
+
+// ─── Pending / approval-status view ─────────────────────────────────────────────
+
+function StatusStep({ state, title, desc, isLast }: { state: 'done' | 'current' | 'todo' | 'error'; title: string; desc: string; isLast?: boolean }) {
+  return (
+    <div className="flex gap-3">
+      <div className="flex flex-col items-center">
+        <div className={`h-8 w-8 rounded-full flex items-center justify-center flex-shrink-0 ${
+          state === 'done'    ? 'bg-green-500 text-white' :
+          state === 'current' ? 'bg-amber-400 text-white ring-4 ring-amber-100' :
+          state === 'error'   ? 'bg-red-500 text-white' :
+                                'bg-gray-200 text-gray-400'
+        }`}>
+          {state === 'done' ? (
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+            </svg>
+          ) : state === 'error' ? (
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          ) : state === 'current' ? (
+            <span className="h-2 w-2 rounded-full bg-white animate-pulse" />
+          ) : null}
+        </div>
+        {!isLast && <div className="w-0.5 flex-1 bg-gray-200 my-1" />}
+      </div>
+      <div className={isLast ? '' : 'pb-6'}>
+        <p className={`text-sm font-semibold ${state === 'todo' ? 'text-gray-400' : state === 'error' ? 'text-red-600' : 'text-gray-800'}`}>{title}</p>
+        <p className="text-xs text-gray-500 mt-0.5 leading-relaxed">{desc}</p>
+      </div>
+    </div>
+  )
+}
+
+function AffiliateStatusView({ rejected }: { rejected?: boolean }) {
+  const { user, token, setAuth, logout } = useAuth()
+  const navigate = useNavigate()
+  const [refreshing, setRefreshing] = useState(false)
+
+  const handleLogout = async () => {
+    try { await api.post('/auth/logout') } catch { /* ignore */ }
+    logout()
+    navigate('/login', { replace: true })
+    toast.success('Signed out.')
+  }
+
+  const refreshStatus = async () => {
+    setRefreshing(true)
+    try {
+      const res  = await api.get<{ user: { status: number } }>('/auth/me')
+      const fresh = res.data.user
+      if (user && token) setAuth({ ...user, status: fresh.status }, token)
+      if (fresh.status === 1)      toast.success("You're approved! Welcome aboard. 🎉")
+      else if (fresh.status === 2) toast('Your application was not approved.', { icon: '🚫' })
+      else                         toast('Still under review — we\'ll email you the moment it\'s approved.', { icon: '⏳' })
+    } catch {
+      toast.error('Could not refresh your status. Please try again.')
+    } finally {
+      setRefreshing(false)
+    }
+  }
+
+  return (
+    <div className="min-h-screen bg-[#F0F3F8] flex flex-col">
+      {/* Top bar */}
+      <header className="bg-white border-b border-gray-100 px-5 h-16 flex items-center justify-between">
+        <OdeLogo />
+        <button onClick={handleLogout} className="text-sm text-gray-500 hover:text-red-600 transition-colors">
+          Sign out
+        </button>
+      </header>
+
+      <main className="flex-1 flex items-start justify-center px-4 py-10">
+        <div className="w-full max-w-xl">
+
+          <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+            {/* Banner */}
+            {rejected ? (
+              <div className="bg-red-50 border-b border-red-100 px-6 py-5 flex items-center gap-4">
+                <div className="h-12 w-12 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
+                  <svg className="h-6 w-6 text-red-500" fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9.75 9.75l4.5 4.5m0-4.5l-4.5 4.5M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-wide text-red-600">Application not approved</p>
+                  <h1 className="text-lg font-bold text-gray-800">Hi {user?.first_name}</h1>
+                </div>
+              </div>
+            ) : (
+              <div className="bg-amber-50 border-b border-amber-100 px-6 py-5 flex items-center gap-4">
+                <div className="h-12 w-12 rounded-full bg-amber-100 flex items-center justify-center flex-shrink-0">
+                  <svg className="h-6 w-6 text-amber-500" fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-wide text-amber-600">Application under review</p>
+                  <h1 className="text-lg font-bold text-gray-800">Hi {user?.first_name}, you're almost there!</h1>
+                </div>
+              </div>
+            )}
+
+            <div className="px-6 py-6">
+              <p className="text-sm text-gray-600 mb-6">
+                {rejected ? (
+                  <>Unfortunately your affiliate application wasn&apos;t approved at this time. If you believe this was a mistake, please contact us at <a href="mailto:support@onedayevent.com" className="text-[#1CA0DF] font-medium underline">support@onedayevent.com</a>.</>
+                ) : (
+                  <>Thanks for applying to the One Day Event affiliate program. Our team is reviewing your application — we&apos;ll email you at <strong>{user?.email}</strong> the moment it&apos;s approved.</>
+                )}
+              </p>
+
+              {/* Status timeline */}
+              <div className="mb-2">
+                <StatusStep state="done" title="Application submitted" desc="We've received your details." />
+                {rejected ? (
+                  <>
+                    <StatusStep state="done"  title="Reviewed"     desc="Our team reviewed your application." />
+                    <StatusStep state="error" title="Not approved" desc="Your application was not approved at this time." isLast />
+                  </>
+                ) : (
+                  <>
+                    <StatusStep state="current" title="Under review"      desc="Our team is reviewing your application (usually within 1–2 business days)." />
+                    <StatusStep state="todo"    title="Approved & active" desc="Once approved, your full affiliate dashboard unlocks here." isLast />
+                  </>
+                )}
+              </div>
+
+              {/* Referral code preview — only while pending */}
+              {!rejected && user?.referral_string && (
+                <div className="mt-4 rounded-xl border border-gray-100 bg-gray-50 px-4 py-3">
+                  <p className="text-[11px] uppercase tracking-wide text-gray-400 mb-0.5">Your referral code (active once approved)</p>
+                  <p className="font-mono font-bold text-gray-700 tracking-wide">{user.referral_string}</p>
+                </div>
+              )}
+
+              <div className="flex flex-wrap gap-3 mt-6">
+                <button
+                  onClick={refreshStatus}
+                  disabled={refreshing}
+                  className="px-5 py-2.5 bg-[#1CA0DF] hover:bg-[#1786BB] text-white text-sm font-semibold rounded-lg transition-colors disabled:opacity-50"
+                >
+                  {refreshing ? 'Checking…' : 'Check status'}
+                </button>
+                {rejected ? (
+                  <a
+                    href="mailto:support@onedayevent.com"
+                    className="px-5 py-2.5 border border-gray-200 text-gray-600 text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors"
+                  >
+                    Contact support
+                  </a>
+                ) : (
+                  <Link
+                    to="/"
+                    className="px-5 py-2.5 border border-gray-200 text-gray-600 text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors"
+                  >
+                    Back to home
+                  </Link>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* What you'll get — only while pending */}
+          {!rejected && (
+            <div className="mt-6 grid grid-cols-1 sm:grid-cols-3 gap-4">
+              {[
+                { t: 'Earn commissions', d: 'Get paid for every policy from your referrals.' },
+                { t: 'Track referrals',  d: 'See every lead and sale in real time.' },
+                { t: 'Reliable payouts', d: 'On-time payouts straight to you.' },
+              ].map((c) => (
+                <div key={c.t} className="bg-white rounded-xl border border-gray-100 px-4 py-4">
+                  <p className="text-sm font-semibold text-gray-800">{c.t}</p>
+                  <p className="text-xs text-gray-500 mt-1 leading-relaxed">{c.d}</p>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </main>
+    </div>
+  )
+}
+
+// ─── Main component ───────────────────────────────────────────────────────────
+
+export default function AffiliateDashboard() {
+  const { user } = useAuth()
+
+  // Approved affiliates see the full portal; pending/rejected see their status.
+  if (user?.status === 1) {
+    return <AffiliatePortal />
+  }
+
+  return <AffiliateStatusView rejected={user?.status === 2} />
 }

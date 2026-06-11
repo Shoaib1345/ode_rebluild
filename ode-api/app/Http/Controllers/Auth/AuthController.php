@@ -56,7 +56,16 @@ class AuthController extends Controller
             ], 401);
         }
 
-        if ($user->status !== 1) {
+        $user->loadMissing('role');
+
+        // Affiliates (access_level 6) sign up in a pending state and must be able
+        // to log in to track their approval status. Every other inactive account
+        // stays blocked.
+        $isPendingAffiliate = $user->role
+            && (int) $user->role->access_level === 6
+            && (int) $user->status !== 1;
+
+        if ((int) $user->status !== 1 && ! $isPendingAffiliate) {
             return response()->json([
                 'message' => 'Your account is inactive. Please contact support.',
             ], 403);

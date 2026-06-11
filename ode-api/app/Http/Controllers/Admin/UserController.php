@@ -257,20 +257,21 @@ class UserController extends Controller
     /**
      * PATCH /api/admin/users/{id}/reject
      *
-     * Declines a pending application and soft-deletes it.
+     * Declines a pending application by flagging it rejected (status 2) rather
+     * than deleting it. The applicant can still log in to see they weren't
+     * approved, and an admin can re-approve later.
      */
     public function reject(Request $request, int $id): JsonResponse
     {
-        $user = User::findOrFail($id);
+        $user = User::with('role')->findOrFail($id);
 
         if ($user->id === $request->user()->id) {
             return response()->json(['message' => 'You cannot reject your own account.'], 422);
         }
 
-        $user->update(['status' => 0]);
-        $user->delete();
+        $user->update(['status' => User::STATUS_REJECTED]);
 
-        return response()->json(['message' => 'Application rejected.']);
+        return response()->json($this->formatUser($user->fresh(['role'])));
     }
 
     // ── Impersonate ─────────────────────────────────────────────────────────────

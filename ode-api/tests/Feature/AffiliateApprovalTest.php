@@ -45,23 +45,45 @@ class AffiliateApprovalTest extends TestCase
         ], $o);
     }
 
-    public function test_affiliate_signup_is_pending_and_issues_no_token(): void
+    public function test_affiliate_signup_is_pending_and_issues_a_login_token(): void
     {
         $res = $this->postJson('/api/affiliate/register', $this->registerPayload());
 
+        // A token is issued so the applicant can immediately access their portal
+        // and track approval status, even though they're still pending (status 0).
         $res->assertCreated()
-            ->assertJsonMissingPath('token')
+            ->assertJsonStructure(['token', 'user'])
             ->assertJsonPath('user.status', 0);
 
+        $this->assertNotEmpty($res->json('token'));
         $this->assertDatabaseHas('users', ['email' => 'amy@example.com', 'status' => 0]);
     }
 
-    public function test_pending_affiliate_cannot_log_in(): void
+    public function test_pending_affiliate_can_log_in_to_track_status(): void
     {
         $this->postJson('/api/affiliate/register', $this->registerPayload())->assertCreated();
 
+        // Pending affiliates may log in so they can view their approval status.
         $this->postJson('/api/auth/login', [
             'email'    => 'amy@example.com',
+            'password' => 'password123',
+        ])->assertOk()
+          ->assertJsonPath('user.status', 0)
+          ->assertJsonPath('user.role.access_level', 6);
+    }
+
+    public function test_inactive_non_affiliate_still_cannot_log_in(): void
+    {
+        $role = UserRole::where('access_level', 5)->first(); // customer
+        User::factory()->create([
+            'role_id'  => $role->id,
+            'email'    => 'inactive@example.com',
+            'status'   => 0,
+            'password' => 'password123',
+        ]);
+
+        $this->postJson('/api/auth/login', [
+            'email'    => 'inactive@example.com',
             'password' => 'password123',
         ])->assertStatus(403);
     }
@@ -88,16 +110,24 @@ class AffiliateApprovalTest extends TestCase
         ])->assertOk();
     }
 
-    public function test_admin_can_reject_affiliate(): void
+    public function test_admin_can_reject_affiliate_with_status_flag(): void
     {
         $this->postJson('/api/affiliate/register', $this->registerPayload())->assertCreated();
         $affiliate = User::where('email', 'amy@example.com')->first();
 
         $this->actingAs($this->admin())
             ->patchJson("/api/admin/users/{$affiliate->id}/reject")
-            ->assertOk();
+            ->assertOk()
+            ->assertJsonPath('status', 2);
 
-        $this->assertSoftDeleted('users', ['id' => $affiliate->id]);
+        // Flagged rejected, NOT soft-deleted — so they can still view their status.
+        $this->assertDatabaseHas('users', ['id' => $affiliate->id, 'status' => 2, 'deleted_at' => null]);
+
+        // A rejected affiliate can still log in to see they weren't approved.
+        $this->postJson('/api/auth/login', [
+            'email'    => 'amy@example.com',
+            'password' => 'password123',
+        ])->assertOk()->assertJsonPath('user.status', 2);
     }
 
     public function test_approve_is_admin_only(): void
