@@ -10,6 +10,8 @@ const HomePage        = lazy(() => import('../pages/home/HomePage'))
 // Auth
 const LoginPage       = lazy(() => import('../pages/auth/LoginPage'))
 const RegisterPage    = lazy(() => import('../pages/auth/RegisterPage'))
+const ForgotPasswordPage = lazy(() => import('../pages/auth/ForgotPasswordPage'))
+const ResetPasswordPage  = lazy(() => import('../pages/auth/ResetPasswordPage'))
 
 // Quote Wizard
 const EventTypePage        = lazy(() => import('../pages/quote/EventTypePage'))
@@ -132,6 +134,8 @@ export default function AppRoutes() {
         {/* ── Auth ────────────────────────────────────────────────────── */}
         <Route path="/login"    element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
+        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+        <Route path="/reset-password"  element={<ResetPasswordPage />} />
 
         {/* ── Quote Wizard ──────────────────────────────────────────────── */}
         {/* Step 1: Event Type */}
