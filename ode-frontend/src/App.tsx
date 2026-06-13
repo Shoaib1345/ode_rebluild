@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { Toaster } from 'react-hot-toast'
 import { HelmetProvider } from 'react-helmet-async'
 import AppRoutes from './routes'
+import ChatbotWidget from './components/ChatbotWidget'
 import './index.css'
 
 const queryClient = new QueryClient({
@@ -20,6 +21,7 @@ function App() {
       <QueryClientProvider client={queryClient}>
         <BrowserRouter>
           <AppRoutes />
+          <ChatbotWidget />
           <Toaster position="top-right" />
         </BrowserRouter>
       </QueryClientProvider>
