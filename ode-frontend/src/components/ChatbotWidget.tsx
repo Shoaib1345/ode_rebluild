@@ -2,6 +2,8 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import type { CSSProperties, ChangeEvent, KeyboardEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '../lib/axios'
+import { useQuoteStore } from '../stores/quoteStore'
+import type { QuoteParams } from '../types'
 
 interface QaItem {
   keywords: string[]
@@ -34,6 +36,7 @@ type QuoteStage =
   | null | 'event_type' | 'state' | 'guests' | 'date'
   | 'venue' | 'alcohol' | 'alcohol_type' | 'insured'
   | 'loading' | 'done'
+  | 'checkout_name' | 'checkout_email' | 'saving'
 
 interface QuoteState {
   stage: QuoteStage
@@ -47,6 +50,8 @@ interface QuoteState {
   liquor?: boolean
   hostLiquor?: boolean
   additionalInsureds?: number
+  contactName?: string
+  contactEmail?: string
 }
 
 interface QuotePlanLite {
@@ -118,11 +123,16 @@ const SUGGESTION_POOL = [
 const SUGGEST_COUNT = 4
 
 // ── Special quick-reply actions ────────────────────────────────────────────────
-const START_QUOTE = '__start_quote__'
-const GOTO_QUOTE  = '__goto_quote__'
-const RESTART     = '__restart__'
-const BACK        = '__back__'
-const CANCEL      = '__cancel__'
+const START_QUOTE     = '__start_quote__'
+const GOTO_QUOTE      = '__goto_quote__'
+const RESTART         = '__restart__'
+const BACK            = '__back__'
+const CANCEL          = '__cancel__'
+const CHOOSE_CHECKOUT = '__choose_checkout__'
+const FINISH_CHAT     = '__finish_chat__'
+const GO_SITE         = '__go_site__'
+
+const GREETING = "Hi! I'm the One Day Event assistant. Ask me about events, pricing, certificates, or coverage — or tap \"Get a quote\" for an instant estimate."
 
 // Step numbering for the header progress indicator (alcohol_type shares step 6).
 const STEP_NUM: Record<string, number> = { event_type: 1, state: 2, guests: 3, date: 4, venue: 5, alcohol: 6, alcohol_type: 6, insured: 7 }
@@ -181,11 +191,12 @@ const styles: Record<string, CSSProperties> = {
 
 export default function ChatbotWidget() {
   const navigate = useNavigate()
+  const setQuoteParams = useQuoteStore((s) => s.setParams)
   const [open, setOpen] = useState(false)
   const [input, setInput] = useState('')
   const [adminQa, setAdminQa] = useState<QaItem[]>([])
   const [messages, setMessages] = useState<Message[]>([
-    { id: 1, role: 'bot', text: "Hi! I'm the One Day Event assistant. Ask me about events, pricing, certificates, or coverage — or tap \"Get a quote\" for an instant estimate." },
+    { id: 1, role: 'bot', text: GREETING },
   ])
   const [quickReplies, setQuickReplies] = useState<QuickReply[]>(INITIAL_REPLIES)
   const [quote, setQuote] = useState<QuoteState>({ stage: null })
@@ -305,6 +316,71 @@ export default function ChatbotWidget() {
     setQuickReplies(faqReplies(asked))
   }
 
+  function resetChat() {
+    setMessages([{ id: nextId.current++, role: 'bot', text: GREETING }])
+    setQuote({ stage: null }); setHistory([]); setAsked([]); setTyping(false)
+    setQuickReplies(faqReplies([]))
+    setInput('')
+  }
+
+  // ── Checkout handoff ─────────────────────────────────────────────────────────
+
+  function buildQuoteParams(q: QuoteState): Partial<QuoteParams> {
+    return {
+      eventType:           q.eventType,
+      eventTypeName:       q.eventTypeLabel,
+      eventDates:          q.eventDates,
+      event_state:         q.eventState,
+      number_of_persons:   q.persons,
+      liquor:              q.liquor ? 1 : 0,
+      host_liquor:         q.hostLiquor ? 1 : 0,
+      privateResidence:    q.privateResidence ? 1 : 0,
+      isSetVenue:          q.isVenue ? 1 : 0,
+      additional_insureds: q.additionalInsureds ?? 0,
+      noha: 0, w_o_s: 0, p_a_n_c_b: 0,
+      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    }
+  }
+
+  // Pre-fill the site's quote store with the collected answers and jump to plans.
+  function goToCheckout() {
+    setQuoteParams(buildQuoteParams(quote))
+    navigate('/quote/plans')
+    setOpen(false)
+  }
+
+  function offerCheckout() {
+    addBot('Awesome! 🎉 How would you like to finish and get your Certificate of Insurance?')
+    setQuickReplies([
+      { label: '💬 Finish right here', value: FINISH_CHAT },
+      { label: '🌐 Go to checkout page', value: GO_SITE },
+    ])
+  }
+
+  function startCheckoutCapture() {
+    setQuote(q => ({ ...q, stage: 'checkout_name' }))
+    addBot("Perfect — let's lock it in. What name should I put on the certificate?")
+    setQuickReplies([{ label: '✕ Cancel', value: CANCEL }])
+  }
+
+  async function saveQuote(q: QuoteState) {
+    try {
+      await api.post('/leads/pending', {
+        email:         q.contactEmail,
+        current_route: '/quote/plans',
+        wizard_state:  { params: buildQuoteParams(q) },
+      })
+      setTyping(false)
+      addBot(`✅ All set${q.contactName ? `, ${q.contactName}` : ''}! I've saved your quote and emailed a secure link to ${q.contactEmail} so you can choose your plan and finish checkout. Want to do it right now?`)
+      setQuickReplies([{ label: 'Complete checkout →', value: GO_SITE }, { label: '🔄 Start over', value: RESTART }])
+    } catch {
+      setTyping(false)
+      addBot("Hmm, I couldn't save that just now — but you can still finish on our checkout page.")
+      setQuickReplies([{ label: '🌐 Go to checkout', value: GO_SITE }, { label: '🔄 Start over', value: RESTART }])
+    }
+    setQuote(q2 => ({ ...q2, stage: 'done' }))
+  }
+
   function startQuote() {
     setHistory([])
     setQuote({ stage: 'event_type' })
@@ -373,7 +449,7 @@ export default function ChatbotWidget() {
           `💰 Plans start at $${money(min)}\n\n` +
           'That includes your Certificate of Insurance the same day. Ready to finish and buy?'
         )
-        setQuickReplies([{ label: 'Continue & buy →', value: GOTO_QUOTE }, { label: '🔄 Start over', value: RESTART }])
+        setQuickReplies([{ label: 'Continue & buy →', value: CHOOSE_CHECKOUT }, { label: '🔄 Start over', value: RESTART }])
       }
     } catch {
       setTyping(false)
@@ -437,6 +513,23 @@ export default function ChatbotWidget() {
         void fetchQuote({ ...quote, additionalInsureds: count })
         break
       }
+      case 'checkout_name': {
+        const name = value.trim()
+        if (name.length < 2) { addBot('Please enter your name so we can put it on the certificate.'); return }
+        setQuote(q => ({ ...q, contactName: name, stage: 'checkout_email' }))
+        addBot(`Thanks, ${name}! What's the best email for your quote and certificate?`)
+        setQuickReplies([{ label: '✕ Cancel', value: CANCEL }])
+        break
+      }
+      case 'checkout_email': {
+        const email = value.trim()
+        if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { addBot('That email looks off — please try again, e.g. you@example.com.'); return }
+        setQuote(q => ({ ...q, contactEmail: email, stage: 'saving' }))
+        setQuickReplies([])
+        setTyping(true)
+        void saveQuote({ ...quote, contactEmail: email })
+        break
+      }
       default:
         break
     }
@@ -446,7 +539,7 @@ export default function ChatbotWidget() {
 
   function routeInput(value: string) {
     const v = value.trim().toLowerCase()
-    const inFlow = !!quote.stage && quote.stage !== 'done' && quote.stage !== 'loading'
+    const inFlow = !!quote.stage && quote.stage !== 'done' && quote.stage !== 'loading' && quote.stage !== 'saving'
 
     if (/^(restart|start over|reset|begin again|new quote)$/.test(v)) { startQuote(); return }
     if (/^(cancel|stop|exit|quit|never ?mind|close|forget it)$/.test(v)) {
@@ -469,11 +562,14 @@ export default function ChatbotWidget() {
 
   function onChip(qr: QuickReply) {
     setOpen(true)
-    if (qr.value === START_QUOTE) { addUser('Get a quote'); startQuote(); return }
-    if (qr.value === GOTO_QUOTE)  { navigate('/onedayevent'); setOpen(false); return }
-    if (qr.value === RESTART)     { addUser('Start over'); startQuote(); return }
-    if (qr.value === BACK)        { addUser('← Back'); goBack(); return }
-    if (qr.value === CANCEL)      { addUser('Cancel'); cancelQuote(); return }
+    if (qr.value === START_QUOTE)     { addUser('Get a quote'); startQuote(); return }
+    if (qr.value === GOTO_QUOTE)      { navigate('/onedayevent'); setOpen(false); return }
+    if (qr.value === CHOOSE_CHECKOUT) { addUser('Continue & buy'); offerCheckout(); return }
+    if (qr.value === FINISH_CHAT)     { addUser('Finish here in chat'); startCheckoutCapture(); return }
+    if (qr.value === GO_SITE)         { addUser('Go to checkout'); goToCheckout(); return }
+    if (qr.value === RESTART)         { addUser('Start over'); startQuote(); return }
+    if (qr.value === BACK)            { addUser('← Back'); goBack(); return }
+    if (qr.value === CANCEL)          { addUser('Cancel'); cancelQuote(); return }
     addUser(qr.label)
     routeInput(qr.value)
   }
@@ -494,14 +590,19 @@ export default function ChatbotWidget() {
             <div>
               <h2 style={styles.title}>One Day Event Chat</h2>
               <p style={styles.subtitle}>
-                {typing || quote.stage === 'loading'
-                  ? 'Calculating your quote…'
-                  : quote.stage && quote.stage !== 'done'
-                    ? `Quote · Step ${STEP_NUM[quote.stage] ?? 1} of ${TOTAL_STEPS}`
-                    : 'Instant answers & quotes.'}
+                {typing || quote.stage === 'loading' || quote.stage === 'saving'
+                  ? 'Working on it…'
+                  : quote.stage === 'checkout_name' || quote.stage === 'checkout_email'
+                    ? 'Finishing up — almost done'
+                    : quote.stage && quote.stage !== 'done'
+                      ? `Quote · Step ${STEP_NUM[quote.stage] ?? 1} of ${TOTAL_STEPS}`
+                      : 'Instant answers & quotes.'}
               </p>
             </div>
-            <button type="button" aria-label="Close chat" style={styles.close} onClick={() => setOpen(false)}>x</button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <button type="button" aria-label="Reset chat" title="Start a new chat" style={styles.close} onClick={resetChat}>↻</button>
+              <button type="button" aria-label="Close chat" title="Close" style={styles.close} onClick={() => setOpen(false)}>✕</button>
+            </div>
           </div>
 
           <div style={styles.messages}>
