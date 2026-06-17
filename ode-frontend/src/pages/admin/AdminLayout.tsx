@@ -105,6 +105,7 @@ const TOP_NAV: NavItem[] = [
   { label: 'Blog',             to: '/admin/blog',             icon: IcEdit },
   { label: 'Users / CSRs',     to: '/admin/users',            icon: IcUsers },
   { label: 'Email Templates',  to: '/admin/email-templates',  icon: IcMail },
+  { label: 'Chatbot Q&A',      to: '/admin/chatbot',          icon: IcBot },
   { label: 'CMS Pages',        to: '/admin/pages',            icon: IcPage },
   { label: 'Subscribers',      to: '/admin/subscribers',      icon: IcBell },
   { label: 'W9 Forms',         to: '/admin/w9',               icon: IcFile },
@@ -146,6 +147,11 @@ const IcChevron = ({ open }: { open: boolean }) => (
 const IcChat = () => (
   <svg className="h-[18px] w-[18px] flex-shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor">
     <path strokeLinecap="round" strokeLinejoin="round" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+  </svg>
+)
+const IcBot = () => (
+  <svg className="h-[18px] w-[18px] flex-shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" d="M9.75 9.75h.008v.008H9.75V9.75zm4.5 0h.008v.008h-.008V9.75zM12 3v2.25M7.5 6h9a2.25 2.25 0 012.25 2.25v6A2.25 2.25 0 0116.5 16.5h-9A2.25 2.25 0 015.25 14.25v-6A2.25 2.25 0 017.5 6zm-3 6H3.75m16.5 0H19.5M9 16.5l-1.5 3m9-3l1.5 3" />
   </svg>
 )
 

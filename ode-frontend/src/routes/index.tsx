@@ -49,6 +49,7 @@ const InvoiceCreatePage   = lazy(() => import('../pages/admin/InvoiceCreatePage'
 const InvoiceDetailPage   = lazy(() => import('../pages/admin/InvoiceDetailPage'))
 const AdminChatPage       = lazy(() => import('../pages/admin/AdminChatPage'))
 const AdminSettingsPage   = lazy(() => import('../pages/admin/AdminSettingsPage'))
+const AdminChatbotPage    = lazy(() => import('../pages/admin/AdminChatbotPage'))
 
 // Affiliate
 const AffiliateSignupPage  = lazy(() => import('../pages/affiliate/AffiliateSignupPage'))
@@ -184,6 +185,7 @@ export default function AppRoutes() {
         <Route path="/admin/leads/:id"          element={<ProtectedRoute maxLevel={2}><LeadDetailPage /></ProtectedRoute>} />
         <Route path="/admin/chat"               element={<ProtectedRoute maxLevel={2}><AdminChatPage /></ProtectedRoute>} />
         <Route path="/admin/settings"           element={<ProtectedRoute maxLevel={2}><AdminSettingsPage /></ProtectedRoute>} />
+        <Route path="/admin/chatbot"            element={<ProtectedRoute maxLevel={2}><AdminChatbotPage /></ProtectedRoute>} />
         <Route path="/admin/invoices"           element={<ProtectedRoute maxLevel={2}><InvoicesPage /></ProtectedRoute>} />
         <Route path="/admin/invoices/new"       element={<ProtectedRoute maxLevel={2}><InvoiceCreatePage /></ProtectedRoute>} />
         <Route path="/admin/invoices/:id"       element={<ProtectedRoute maxLevel={2}><InvoiceDetailPage /></ProtectedRoute>} />
