@@ -20,6 +20,7 @@ use App\Http\Controllers\AccountController;
 use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\Auth\ForgotPasswordController;
 use App\Http\Controllers\BlogController;
+use App\Http\Controllers\ChatbotQaController;
 use App\Http\Controllers\CommissionController;
 use App\Http\Controllers\ContactController;
 use App\Http\Controllers\Agent\PortalController as AgentPortalController;
@@ -110,6 +111,9 @@ Route::post('/subscribe', [SubscriberController::class, 'subscribe'])->middlewar
 Route::get('/blog',          [BlogController::class, 'index']);
 Route::get('/blog/{slug}',   [BlogController::class, 'show']);
 
+// ─── Chatbot knowledge base (public read) ────────────────────────────────────
+Route::get('/chatbot/qa', [ChatbotQaController::class, 'index']);
+
 // ─── Protected Routes ────────────────────────────────────────────────────────
 Route::middleware('auth:sanctum')->group(function () {
 
@@ -141,6 +145,14 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/leads/{id}/files',             [LeadController::class, 'storeFile']);
         Route::post('/leads/{id}/follow-ups',        [LeadController::class, 'storeFollowUp']);
         Route::post('/leads/{id}/email',             [LeadController::class, 'sendEmail']);
+
+        // Chatbot knowledge base management
+        Route::get('/chatbot/qa',            [ChatbotQaController::class, 'adminIndex']);
+        Route::post('/chatbot/qa',           [ChatbotQaController::class, 'store']);
+        Route::post('/chatbot/qa/import',    [ChatbotQaController::class, 'import']);
+        Route::delete('/chatbot/qa',         [ChatbotQaController::class, 'clear']);
+        Route::patch('/chatbot/qa/{id}',     [ChatbotQaController::class, 'update']);
+        Route::delete('/chatbot/qa/{id}',    [ChatbotQaController::class, 'destroy']);
 
         // Customer / lead support chat
         Route::get('/chat',                  [ChatController::class, 'conversations']);
