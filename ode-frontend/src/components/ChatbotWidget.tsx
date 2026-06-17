@@ -88,9 +88,34 @@ const DEFAULT_QA: QaItem[] = [
   { keywords: ['thank', 'thanks', 'thank you', 'appreciate'], answer: "You're welcome. Feel free to ask more questions, or tap \"Get a quote\" for an instant price." },
   { keywords: ['bye', 'goodbye', 'see you', 'later', 'take care'], answer: 'Goodbye. Have a wonderful event, and remember you can get a free quote any time.' },
   { keywords: ['help', 'need help', 'assist'], answer: 'I can help with event types, pricing, quotes, coverage, certificates, venues, alcohol coverage, and contact details. Tap "Get a quote" for an instant estimate.' },
+  { keywords: ['do i need', 'why do i need', 'is it required', 'do i have to', 'need insurance', 'required'], answer: 'Many venues require event liability insurance before they\'ll let you book — and it protects you financially if a guest is injured or property is damaged. If your venue asks for proof of insurance, we can provide it instantly.' },
+  { keywords: ['how do i pay', 'payment', 'pay', 'credit card', 'payment method', 'accept', 'debit'], answer: 'Payment is quick and secure — we accept all major credit and debit cards, and your Certificate of Insurance is issued immediately after purchase.' },
+  { keywords: ['claim', 'file a claim', 'how to claim', 'make a claim'], answer: 'If you ever need to file a claim, contact our team and we\'ll guide you through it with your policy details. Most event policies cover bodily injury, property damage, and related legal fees.' },
+  { keywords: ['additional insured', 'add my venue', 'name my venue', 'venue on policy'], answer: 'Yes — you can add additional insureds (like your venue) to your policy. I\'ll ask how many when I build your quote, or you can add them during checkout.' },
+  { keywords: ['multiple days', 'two day', 'more than one day', 'multi day', 'several days'], answer: 'Our instant policies are built for one-day events. For multi-day events, start a quote and our team can help with the right coverage.' },
 ]
 
-const SUGGESTIONS = ['What events do you cover?', 'When do I get my certificate?', 'What does coverage include?']
+// Pool of FAQ suggestions. The bot shows a few at a time and rotates in new
+// ones as they're used, so the same question never lingers after it's answered.
+const SUGGESTION_POOL = [
+  'What events do you cover?',
+  'How much does it cost?',
+  'When do I get my certificate?',
+  'What does coverage include?',
+  'Do I need event insurance?',
+  'Do you cover weddings?',
+  'Do you cover birthday parties?',
+  'What about alcohol at my event?',
+  'Can I add my venue as additional insured?',
+  'How fast can I get coverage?',
+  "What's the maximum coverage limit?",
+  'Do you cover outdoor events?',
+  'How do I pay?',
+  'Can I get a refund?',
+  'Where are you located?',
+  'Do you cover corporate events?',
+]
+const SUGGEST_COUNT = 4
 
 // ── Special quick-reply actions ────────────────────────────────────────────────
 const START_QUOTE = '__start_quote__'
@@ -103,10 +128,15 @@ const CANCEL      = '__cancel__'
 const STEP_NUM: Record<string, number> = { event_type: 1, state: 2, guests: 3, date: 4, venue: 5, alcohol: 6, alcohol_type: 6, insured: 7 }
 const TOTAL_STEPS = 7
 
-const INITIAL_REPLIES: QuickReply[] = [
-  { label: '💬 Get a quote', value: START_QUOTE },
-  ...SUGGESTIONS.map(s => ({ label: s, value: s })),
-]
+// FAQ-mode quick replies: "Get a quote" + a fresh slice of the suggestion pool,
+// excluding anything already asked. Cycles once the whole pool has been used.
+function faqReplies(asked: string[]): QuickReply[] {
+  const remaining = SUGGESTION_POOL.filter(q => !asked.includes(q))
+  const pick = (remaining.length ? remaining : SUGGESTION_POOL).slice(0, SUGGEST_COUNT)
+  return [{ label: '💬 Get a quote', value: START_QUOTE }, ...pick.map(q => ({ label: q, value: q }))]
+}
+
+const INITIAL_REPLIES: QuickReply[] = faqReplies([])
 
 function findAnswer(input: string, qaItems: QaItem[]): string {
   const normalized = input.toLowerCase()
@@ -161,6 +191,7 @@ export default function ChatbotWidget() {
   const [quote, setQuote] = useState<QuoteState>({ stage: null })
   const [history, setHistory] = useState<QuoteStage[]>([])
   const [typing, setTyping] = useState(false)
+  const [asked, setAsked] = useState<string[]>([])
   const [eventTypes, setEventTypes] = useState<EventTypeOpt[]>([])
   const [states, setStates] = useState<StateOpt[]>([])
   const nextId = useRef(2)
@@ -182,6 +213,17 @@ export default function ChatbotWidget() {
   }
   function addUser(text: string) {
     setMessages(cur => [...cur, { id: nextId.current++, role: 'user', text }])
+  }
+
+  // Answer a FAQ and refresh the suggestion chips so the asked question drops
+  // off and new ones rotate in.
+  function answerFaq(question: string) {
+    addBot(findAnswer(question, qaItems))
+    const match = SUGGESTION_POOL.find(q => q.toLowerCase() === question.trim().toLowerCase())
+    let next = match && !asked.includes(match) ? [...asked, match] : asked
+    if (SUGGESTION_POOL.every(q => next.includes(q))) next = []   // whole pool used → cycle
+    setAsked(next)
+    setQuickReplies(faqReplies(next))
   }
 
   // ── Quote flow ───────────────────────────────────────────────────────────────
@@ -254,7 +296,7 @@ export default function ChatbotWidget() {
   function cancelQuote() {
     setQuote({ stage: null }); setHistory([]); setTyping(false)
     addBot('No problem — I\'ve cancelled the quote. Ask me anything, or tap "Get a quote" to start again.')
-    setQuickReplies(INITIAL_REPLIES)
+    setQuickReplies(faqReplies(asked))
   }
 
   function startQuote() {
@@ -402,12 +444,12 @@ export default function ChatbotWidget() {
 
     if (/^(restart|start over|reset|begin again|new quote)$/.test(v)) { startQuote(); return }
     if (/^(cancel|stop|exit|quit|never ?mind|close|forget it)$/.test(v)) {
-      if (inFlow) cancelQuote(); else addBot(findAnswer(value, qaItems)); return
+      if (inFlow) cancelQuote(); else answerFaq(value); return
     }
     if (inFlow && /^(back|go ?back|previous|prev|undo|change|edit)$/.test(v)) { goBack(); return }
     if (inFlow) { handleQuoteAnswer(value); return }
     if (isQuoteTrigger(v)) { startQuote(); return }
-    addBot(findAnswer(value, qaItems))
+    answerFaq(value)
   }
 
   function onSend(text: string) {
