@@ -62,13 +62,13 @@ const DEFAULT_QA: QaItem[] = [
   { keywords: ['hello', 'hi', 'hey', 'good morning', 'good afternoon'], answer: "Hi! Welcome to One Day Event Insurance. I'm here to help with event insurance questions, and I can get you a quick quote too. How can I assist you today?" },
   { keywords: ['what events', 'events cover', 'type of event', 'which event', 'all events'], answer: 'We cover weddings, birthday parties, concerts, festivals, Bar and Bat Mitzvahs, vendor events, corporate events, and many special one-day occasions.' },
   { keywords: ['wedding', 'wedding insurance', 'wedding cover', 'wedding party'], answer: 'Yes. We offer wedding event insurance that helps protect you if a guest gets injured or venue property is damaged.' },
-  { keywords: ['birthday', 'birthday party', 'party insurance', 'birthday event'], answer: 'Birthday party insurance starts from $45. It can help satisfy venue requirements and protect against accidents during your party.' },
+  { keywords: ['birthday', 'birthday party', 'party insurance', 'birthday event'], answer: 'Yes — we cover birthday parties. It can help satisfy venue requirements and protect against accidents during your party. Tap "Get a quote" to see your exact price.' },
   { keywords: ['concert', 'music event', 'music show', 'live show'], answer: 'Concert and music event insurance is available. Coverage can include general liability for attendees, performers, and venue requirements.' },
   { keywords: ['festival', 'outdoor event', 'fair', 'outdoor festival'], answer: 'Festival insurance is available for indoor and outdoor festivals of many sizes. Your quote depends on event details and coverage needs.' },
   { keywords: ['bar mitzvah', 'bat mitzvah', 'mitzvah', 'jewish event'], answer: 'Yes. We offer insurance for Bar and Bat Mitzvah celebrations, including liability coverage for venue requirements.' },
   { keywords: ['vendor', 'vendor event', 'market', 'craft fair', 'trade show'], answer: 'Yes, vendor events like craft fairs, markets, and trade shows can be covered, especially when organizers require proof of insurance.' },
   { keywords: ['corporate', 'corporate event', 'company event', 'office party'], answer: 'Corporate events and office parties can be covered with liability protection for accidents during the event.' },
-  { keywords: ['price', 'cost', 'how much', 'pricing', 'rates', 'affordable', 'cheap'], answer: 'Event insurance starts as low as $45. Exact pricing depends on event type, guest count, location, and selected coverage. Want me to get you an instant quote? Just tap "Get a quote".' },
+  { keywords: ['price', 'cost', 'how much', 'pricing', 'rates', 'affordable', 'cheap', 'expensive', 'afford', 'fee'], answer: 'Pricing depends on your event type, guest count, location, date, and the coverage limit you choose — so it varies for each event. The best way to see your exact price is a quick quote: I\'ll ask a few short questions and show you your plans. Want me to grab your instant price now?' },
   { keywords: ['certificate', 'coi', 'proof of insurance', 'certificate of insurance', 'document'], answer: 'Your Certificate of Insurance is provided immediately after purchase, so you can download it and share it with your venue.' },
   { keywords: ['how long', 'same day', 'fast', 'quick', 'instant', 'how fast'], answer: 'The process is fast. You can get a quote, purchase a policy, and receive your Certificate of Insurance the same day.' },
   { keywords: ['liability', 'what is covered', 'coverage', 'what does it cover', 'protection'], answer: 'Event liability insurance can cover bodily injury, property damage, and legal fees if you are sued. Coverage limits may vary by plan.' },
@@ -223,7 +223,13 @@ export default function ChatbotWidget() {
     let next = match && !asked.includes(match) ? [...asked, match] : asked
     if (SUGGESTION_POOL.every(q => next.includes(q))) next = []   // whole pool used → cycle
     setAsked(next)
-    setQuickReplies(faqReplies(next))
+
+    const replies = faqReplies(next)
+    // For pricing questions, lead with a stronger "see my plans" call to action.
+    if (/price|cost|how much|expensive|cheap|afford|pricing|\bfee\b|\brate/i.test(question)) {
+      replies[0] = { label: '💰 Get my instant price', value: START_QUOTE }
+    }
+    setQuickReplies(replies)
   }
 
   // ── Quote flow ───────────────────────────────────────────────────────────────
