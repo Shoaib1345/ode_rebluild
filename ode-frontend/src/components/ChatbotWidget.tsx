@@ -96,6 +96,12 @@ const SUGGESTIONS = ['What events do you cover?', 'When do I get my certificate?
 const START_QUOTE = '__start_quote__'
 const GOTO_QUOTE  = '__goto_quote__'
 const RESTART     = '__restart__'
+const BACK        = '__back__'
+const CANCEL      = '__cancel__'
+
+// Step numbering for the header progress indicator (alcohol_type shares step 6).
+const STEP_NUM: Record<string, number> = { event_type: 1, state: 2, guests: 3, date: 4, venue: 5, alcohol: 6, alcohol_type: 6, insured: 7 }
+const TOTAL_STEPS = 7
 
 const INITIAL_REPLIES: QuickReply[] = [
   { label: '💬 Get a quote', value: START_QUOTE },
@@ -153,6 +159,8 @@ export default function ChatbotWidget() {
   ])
   const [quickReplies, setQuickReplies] = useState<QuickReply[]>(INITIAL_REPLIES)
   const [quote, setQuote] = useState<QuoteState>({ stage: null })
+  const [history, setHistory] = useState<QuoteStage[]>([])
+  const [typing, setTyping] = useState(false)
   const [eventTypes, setEventTypes] = useState<EventTypeOpt[]>([])
   const [states, setStates] = useState<StateOpt[]>([])
   const nextId = useRef(2)
@@ -167,7 +175,7 @@ export default function ChatbotWidget() {
 
   const qaItems = useMemo(() => [...adminQa, ...DEFAULT_QA], [adminQa])
 
-  useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [messages, quickReplies])
+  useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [messages, quickReplies, typing])
 
   function addBot(text: string) {
     setMessages(cur => [...cur, { id: nextId.current++, role: 'bot', text }])
@@ -178,31 +186,110 @@ export default function ChatbotWidget() {
 
   // ── Quote flow ───────────────────────────────────────────────────────────────
 
-  function startQuote() {
-    setQuote({ stage: 'event_type' })
-    addBot("Sure! Let's get you a quick estimate. First — what type of event are you insuring?")
-    setOpen(true)
+  // Quick replies for a step, always with Back (after step 1) + Cancel.
+  function buildReplies(stage: QuoteStage, opts: QuickReply[]): QuickReply[] {
+    const nav: QuickReply[] = []
+    if (stage && stage !== 'event_type') nav.push({ label: '← Back', value: BACK })
+    nav.push({ label: '✕ Cancel', value: CANCEL })
+    return [...opts, ...nav]
+  }
 
-    if (eventTypes.length === 0) {
-      api.get<EventTypeOpt[]>('/event-types')
-        .then(res => {
-          setEventTypes(res.data)
-          setQuickReplies(res.data.slice(0, 8).map(e => ({ label: e.event_type, value: String(e.id) })))
-        })
-        .catch(() => setQuickReplies([]))
-    } else {
-      setQuickReplies(eventTypes.slice(0, 8).map(e => ({ label: e.event_type, value: String(e.id) })))
-    }
-    if (states.length === 0) {
-      api.get<StateOpt[]>('/us-states').then(res => setStates(res.data)).catch(() => {})
+  // Render (or re-render, for "back") a single step: its question + chips.
+  function ask(stage: QuoteStage) {
+    setQuote(q => ({ ...q, stage }))
+    switch (stage) {
+      case 'event_type':
+        addBot('What type of event are you insuring?')
+        setQuickReplies(buildReplies(stage, eventTypes.slice(0, 8).map(e => ({ label: e.event_type, value: String(e.id) }))))
+        break
+      case 'state':
+        addBot('Which US state is the event in? (e.g. CA or California)')
+        setQuickReplies(buildReplies(stage, []))
+        break
+      case 'guests':
+        addBot('Roughly how many guests are you expecting?')
+        setQuickReplies(buildReplies(stage, [25, 50, 100, 200, 500].map(n => ({ label: String(n), value: String(n) }))))
+        break
+      case 'date':
+        addBot("What's the event date? (MM/DD/YYYY)")
+        setQuickReplies(buildReplies(stage, []))
+        break
+      case 'venue':
+        addBot('Where is the event being held?')
+        setQuickReplies(buildReplies(stage, [{ label: 'Private residence', value: 'private' }, { label: 'Commercial venue', value: 'venue' }]))
+        break
+      case 'alcohol':
+        addBot('Will alcohol be served at the event?')
+        setQuickReplies(buildReplies(stage, [{ label: 'Yes', value: 'yes' }, { label: 'No', value: 'no' }]))
+        break
+      case 'alcohol_type':
+        addBot('Will the alcohol be sold to guests, or provided free of charge?')
+        setQuickReplies(buildReplies(stage, [{ label: 'Sold to guests', value: 'sold' }, { label: 'Free / hosted', value: 'free' }]))
+        break
+      case 'insured':
+        addBot('Last one — how many additional insureds do you need (e.g. your venue)?')
+        setQuickReplies(buildReplies(stage, [{ label: 'None', value: '0' }, { label: '1', value: '1' }, { label: '2', value: '2' }]))
+        break
+      default:
+        break
     }
   }
 
-  function matchState(value: string): StateOpt | undefined {
-    const v = value.trim().toLowerCase()
-    return states.find(s => s.abbreviation.toLowerCase() === v)
+  // Apply an answer, remember the step we came from, then ask the next one.
+  function advance(patch: Partial<QuoteState>, next: QuoteStage, ack?: string) {
+    setHistory(h => [...h, quote.stage as QuoteStage])
+    setQuote(q => ({ ...q, ...patch }))
+    if (ack) addBot(ack)
+    ask(next)
+  }
+
+  function goBack() {
+    if (history.length === 0) { cancelQuote(); return }
+    const prev = history[history.length - 1]
+    setHistory(h => h.slice(0, -1))
+    addBot('Sure — let\'s revisit that.')
+    ask(prev)
+  }
+
+  function cancelQuote() {
+    setQuote({ stage: null }); setHistory([]); setTyping(false)
+    addBot('No problem — I\'ve cancelled the quote. Ask me anything, or tap "Get a quote" to start again.')
+    setQuickReplies(INITIAL_REPLIES)
+  }
+
+  function startQuote() {
+    setHistory([])
+    setQuote({ stage: 'event_type' })
+    setOpen(true)
+    addBot("Let's get you a fast, free estimate — just a few quick questions. What type of event are you insuring?")
+    const chips = (list: EventTypeOpt[]) => buildReplies('event_type', list.slice(0, 8).map(e => ({ label: e.event_type, value: String(e.id) })))
+    if (eventTypes.length === 0) {
+      setQuickReplies(buildReplies('event_type', []))
+      api.get<EventTypeOpt[]>('/event-types').then(res => { setEventTypes(res.data); setQuickReplies(chips(res.data)) }).catch(() => {})
+    } else {
+      setQuickReplies(chips(eventTypes))
+    }
+    if (states.length === 0) api.get<StateOpt[]>('/us-states').then(res => setStates(res.data)).catch(() => {})
+  }
+
+  function resolveEventType(value: string): EventTypeOpt | undefined {
+    const asId = Number(value)
+    if (!Number.isNaN(asId)) { const m = eventTypes.find(e => e.id === asId); if (m) return m }
+    const v = value.toLowerCase().trim()
+    return eventTypes.find(e => e.event_type.toLowerCase() === v)
+      ?? eventTypes.find(e => v.length >= 3 && (v.includes(e.event_type.toLowerCase()) || e.event_type.toLowerCase().includes(v)))
+  }
+
+  function resolveState(value: string): { code: string; display: string } | undefined {
+    const raw = value.trim()
+    const v = raw.toLowerCase()
+    const st = states.find(s => s.abbreviation.toLowerCase() === v)
       ?? states.find(s => s.name.toLowerCase() === v)
       ?? (v.length >= 3 ? states.find(s => s.name.toLowerCase().includes(v)) : undefined)
+    if (st) return { code: st.abbreviation, display: st.name }
+    if (/^[a-zA-Z]{2}$/.test(raw)) return { code: raw.toUpperCase(), display: raw.toUpperCase() }
+    if (states.length === 0 && raw.length >= 4) return { code: raw, display: raw }
+    return undefined
   }
 
   async function fetchQuote(q: QuoteState) {
@@ -224,113 +311,81 @@ export default function ChatbotWidget() {
       const plans = res.data.plans ?? {}
       const list = ['firstOption', 'secondOption', 'thirdOption', 'fourthOption']
         .map(k => plans[k]).filter((p): p is QuotePlanLite => !!p)
+      setTyping(false)
 
       if (list.length === 0) {
-        addBot("I couldn't find coverage for those exact details — our full quote tool can help you explore options.")
-        setQuickReplies([{ label: 'Open quote tool →', value: GOTO_QUOTE }, { label: 'Start over', value: RESTART }])
+        addBot("I couldn't find an instant rate for those exact details — our full quote tool can help you explore options (some combinations, like alcohol sold to guests, need a quick manual review).")
+        setQuickReplies([{ label: 'Open quote tool →', value: GOTO_QUOTE }, { label: '🔄 Start over', value: RESTART }])
       } else {
         const min = Math.min(...list.map(p => p.total))
         const rec = list.find(p => p.recommended) ?? list[0]
         addBot(
-          `Here's your estimate for ${q.eventTypeLabel}:\n` +
-          `• Plans start at $${money(min)}\n` +
-          `• Recommended: $${money(rec.total)} for $${rec.min_limit}M / $${rec.max_limit}M coverage\n\n` +
-          'Ready to lock it in and get your Certificate of Insurance?'
+          `Here's your estimate for a ${q.eventTypeLabel} in ${q.eventState} 🎉\n\n` +
+          `⭐ Recommended: $${money(rec.total)} — $${rec.min_limit}M / $${rec.max_limit}M coverage\n` +
+          `💰 Plans start at $${money(min)}\n\n` +
+          'That includes your Certificate of Insurance the same day. Ready to finish and buy?'
         )
-        setQuickReplies([{ label: 'Continue & buy →', value: GOTO_QUOTE }, { label: 'Start over', value: RESTART }])
+        setQuickReplies([{ label: 'Continue & buy →', value: GOTO_QUOTE }, { label: '🔄 Start over', value: RESTART }])
       }
     } catch {
+      setTyping(false)
       addBot('Sorry, something went wrong calculating your quote. Please try our full quote tool.')
-      setQuickReplies([{ label: 'Open quote tool →', value: GOTO_QUOTE }, { label: 'Start over', value: RESTART }])
+      setQuickReplies([{ label: 'Open quote tool →', value: GOTO_QUOTE }, { label: '🔄 Start over', value: RESTART }])
     }
     setQuote(q2 => ({ ...q2, stage: 'done' }))
+    setHistory([])
   }
 
   function handleQuoteAnswer(value: string) {
     switch (quote.stage) {
       case 'event_type': {
-        let et: EventTypeOpt | undefined
-        const asId = Number(value)
-        if (!Number.isNaN(asId)) et = eventTypes.find(e => e.id === asId)
-        if (!et) {
-          const v = value.toLowerCase()
-          et = eventTypes.find(e => v.includes(e.event_type.toLowerCase()) || e.event_type.toLowerCase().includes(v))
-        }
-        if (!et) { addBot('Please pick an event type from the options above, or type its name.'); return }
-        setQuote(q => ({ ...q, eventType: et!.id, eventTypeLabel: et!.event_type, stage: 'state' }))
-        setQuickReplies([])
-        addBot(`Great — ${et.event_type}. Which US state is the event in? (e.g. CA or California)`)
+        const et = resolveEventType(value)
+        if (!et) { addBot("Hmm, I didn't recognise that event type. Pick one from the buttons, or type its name."); return }
+        advance({ eventType: et.id, eventTypeLabel: et.event_type }, 'state', `Great — ${et.event_type} ✓`)
         break
       }
       case 'state': {
-        const raw = value.trim()
-        const st = matchState(raw)
-        let stateVal: string | null = null
-        let display = raw
-        if (st) {
-          stateVal = st.abbreviation; display = st.name
-        } else if (/^[a-zA-Z]{2}$/.test(raw)) {
-          stateVal = raw.toUpperCase(); display = raw.toUpperCase()  // 2-letter code (API accepts it)
-        } else if (states.length === 0 && raw.length >= 4) {
-          stateVal = raw  // states list unavailable — trust a full name
-        }
-        if (!stateVal) { addBot("I couldn't find that state. Try the 2-letter code (e.g. CA) or the full name."); return }
-        setQuote(q => ({ ...q, eventState: stateVal!, stage: 'guests' }))
-        addBot(`${display} ✓. How many guests are you expecting?`)
+        const r = resolveState(value)
+        if (!r) { addBot("I couldn't find that state. Try the 2-letter code (e.g. CA) or the full name."); return }
+        advance({ eventState: r.code }, 'guests', `${r.display} ✓`)
         break
       }
       case 'guests': {
         const n = parseInt(value.replace(/[^0-9]/g, ''), 10)
         if (!n || n < 1) { addBot('Please enter a valid guest count, e.g. 100.'); return }
-        setQuote(q => ({ ...q, persons: n, stage: 'date' }))
-        addBot("What's the event date? (MM/DD/YYYY)")
+        advance({ persons: n }, 'date', `${n} guests ✓`)
         break
       }
       case 'date': {
         const d = normalizeDate(value)
         if (!d) { addBot('Please enter the date as MM/DD/YYYY, e.g. 09/15/2026.'); return }
-        setQuote(q => ({ ...q, eventDates: d, stage: 'venue' }))
-        setQuickReplies([
-          { label: 'Private residence', value: 'private' },
-          { label: 'Commercial venue', value: 'venue' },
-        ])
-        addBot('Where is the event being held?')
+        advance({ eventDates: d }, 'venue', `${d} ✓`)
         break
       }
       case 'venue': {
         const v = value.toLowerCase()
         const isPrivate = v.includes('priv') || v.includes('home') || v.includes('house') || v.includes('backyard')
-        setQuote(q => ({ ...q, privateResidence: isPrivate, isVenue: !isPrivate, stage: 'alcohol' }))
-        setQuickReplies([{ label: 'Yes', value: 'yes' }, { label: 'No', value: 'no' }])
-        addBot(`${isPrivate ? 'Private residence' : 'Commercial venue'} ✓. Will alcohol be served at the event?`)
+        advance({ privateResidence: isPrivate, isVenue: !isPrivate }, 'alcohol', `${isPrivate ? 'Private residence' : 'Commercial venue'} ✓`)
         break
       }
       case 'alcohol': {
         const yes = /^y/i.test(value.trim()) || value.toLowerCase().includes('yes')
-        if (!yes) {
-          setQuote(q => ({ ...q, liquor: false, hostLiquor: false, stage: 'insured' }))
-          setQuickReplies([{ label: '0', value: '0' }, { label: '1', value: '1' }, { label: '2', value: '2' }])
-          addBot('Got it — no alcohol. Last question: how many additional insureds do you need (e.g. your venue)? Enter a number, or 0.')
-        } else {
-          setQuote(q => ({ ...q, stage: 'alcohol_type' }))
-          setQuickReplies([{ label: 'Sold to guests', value: 'sold' }, { label: 'Free / hosted', value: 'free' }])
-          addBot('Will the alcohol be sold to guests, or provided free of charge?')
-        }
+        if (!yes) advance({ liquor: false, hostLiquor: false }, 'insured', 'No alcohol ✓')
+        else advance({}, 'alcohol_type')
         break
       }
       case 'alcohol_type': {
         const sold = value.toLowerCase().includes('sold') || value.toLowerCase().includes('sell')
-        setQuote(q => ({ ...q, liquor: sold, hostLiquor: !sold, stage: 'insured' }))
-        setQuickReplies([{ label: '0', value: '0' }, { label: '1', value: '1' }, { label: '2', value: '2' }])
-        addBot('Last question: how many additional insureds do you need (e.g. your venue)? Enter a number, or 0.')
+        advance({ liquor: sold, hostLiquor: !sold }, 'insured', sold ? 'Sold to guests ✓' : 'Free / hosted ✓')
         break
       }
       case 'insured': {
         const parsed = parseInt(value.replace(/[^0-9]/g, ''), 10)
         const count = Number.isNaN(parsed) ? 0 : Math.min(parsed, 99)
-        setQuickReplies([])
+        setHistory(h => [...h, 'insured'])
         setQuote(q => ({ ...q, additionalInsureds: count, stage: 'loading' }))
-        addBot('Perfect — calculating your quote… ⏳')
+        setQuickReplies([])
+        setTyping(true)
         void fetchQuote({ ...quote, additionalInsureds: count })
         break
       }
@@ -342,13 +397,17 @@ export default function ChatbotWidget() {
   // ── Routing ────────────────────────────────────────────────────────────────────
 
   function routeInput(value: string) {
-    if (quote.stage && quote.stage !== 'done' && quote.stage !== 'loading') {
-      handleQuoteAnswer(value)
-    } else if (isQuoteTrigger(value)) {
-      startQuote()
-    } else {
-      addBot(findAnswer(value, qaItems))
+    const v = value.trim().toLowerCase()
+    const inFlow = !!quote.stage && quote.stage !== 'done' && quote.stage !== 'loading'
+
+    if (/^(restart|start over|reset|begin again|new quote)$/.test(v)) { startQuote(); return }
+    if (/^(cancel|stop|exit|quit|never ?mind|close|forget it)$/.test(v)) {
+      if (inFlow) cancelQuote(); else addBot(findAnswer(value, qaItems)); return
     }
+    if (inFlow && /^(back|go ?back|previous|prev|undo|change|edit)$/.test(v)) { goBack(); return }
+    if (inFlow) { handleQuoteAnswer(value); return }
+    if (isQuoteTrigger(v)) { startQuote(); return }
+    addBot(findAnswer(value, qaItems))
   }
 
   function onSend(text: string) {
@@ -362,9 +421,11 @@ export default function ChatbotWidget() {
 
   function onChip(qr: QuickReply) {
     setOpen(true)
-    if (qr.value === START_QUOTE) { addUser(qr.label); startQuote(); return }
-    if (qr.value === GOTO_QUOTE) { navigate('/onedayevent'); setOpen(false); return }
-    if (qr.value === RESTART) { addUser('Start over'); startQuote(); return }
+    if (qr.value === START_QUOTE) { addUser('Get a quote'); startQuote(); return }
+    if (qr.value === GOTO_QUOTE)  { navigate('/onedayevent'); setOpen(false); return }
+    if (qr.value === RESTART)     { addUser('Start over'); startQuote(); return }
+    if (qr.value === BACK)        { addUser('← Back'); goBack(); return }
+    if (qr.value === CANCEL)      { addUser('Cancel'); cancelQuote(); return }
     addUser(qr.label)
     routeInput(qr.value)
   }
@@ -380,10 +441,17 @@ export default function ChatbotWidget() {
     <>
       {open && (
         <section aria-label="One Day Event chatbot" style={styles.panel}>
+          <style>{'@keyframes odeBlink{0%,80%,100%{opacity:.25}40%{opacity:1}}.ode-typing-dot{font-size:9px;color:#C41E26;animation:odeBlink 1.1s infinite both}.ode-typing-dot:nth-child(2){animation-delay:.18s}.ode-typing-dot:nth-child(3){animation-delay:.36s}'}</style>
           <div style={styles.header}>
             <div>
               <h2 style={styles.title}>One Day Event Chat</h2>
-              <p style={styles.subtitle}>Instant answers &amp; quotes.</p>
+              <p style={styles.subtitle}>
+                {typing || quote.stage === 'loading'
+                  ? 'Calculating your quote…'
+                  : quote.stage && quote.stage !== 'done'
+                    ? `Quote · Step ${STEP_NUM[quote.stage] ?? 1} of ${TOTAL_STEPS}`
+                    : 'Instant answers & quotes.'}
+              </p>
             </div>
             <button type="button" aria-label="Close chat" style={styles.close} onClick={() => setOpen(false)}>x</button>
           </div>
@@ -394,6 +462,14 @@ export default function ChatbotWidget() {
                 {message.text}
               </div>
             ))}
+
+            {typing && (
+              <div style={{ ...styles.botMessage, display: 'inline-flex', gap: 5, alignItems: 'center' }}>
+                <span className="ode-typing-dot">●</span>
+                <span className="ode-typing-dot">●</span>
+                <span className="ode-typing-dot">●</span>
+              </div>
+            )}
 
             {quickReplies.length > 0 && (
               <div style={styles.suggestions}>
