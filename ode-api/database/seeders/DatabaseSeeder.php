@@ -12,7 +12,9 @@ class DatabaseSeeder extends Seeder
             UserRolesSeeder::class,
             UsStatesSeeder::class,
             EmailTemplateSeeder::class,
-            EventTypeSeeder::class,
+            // Event types + carrier rates + per-rate state coverage (legacy import).
+            // Supersedes EventTypeSeeder (which only seeded a handful of types).
+            EventPricingSeeder::class,
         ]);
     }
 }
