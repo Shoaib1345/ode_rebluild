@@ -30,7 +30,10 @@ interface StateOpt {
   abbreviation: string
 }
 
-type QuoteStage = null | 'event_type' | 'state' | 'guests' | 'date' | 'alcohol' | 'loading' | 'done'
+type QuoteStage =
+  | null | 'event_type' | 'state' | 'guests' | 'date'
+  | 'venue' | 'alcohol' | 'alcohol_type' | 'insured'
+  | 'loading' | 'done'
 
 interface QuoteState {
   stage: QuoteStage
@@ -39,7 +42,11 @@ interface QuoteState {
   eventState?: string
   persons?: number
   eventDates?: string
+  privateResidence?: boolean
+  isVenue?: boolean
   liquor?: boolean
+  hostLiquor?: boolean
+  additionalInsureds?: number
 }
 
 interface QuotePlanLite {
@@ -122,15 +129,15 @@ function money(n: number): string {
 const styles: Record<string, CSSProperties> = {
   bubble: { position: 'fixed', right: 24, bottom: 24, width: 62, height: 62, borderRadius: '50%', border: 'none', background: '#E0232C', color: '#fff', fontSize: 28, boxShadow: '0 14px 34px rgba(224, 35, 44, 0.32)', cursor: 'pointer', zIndex: 1000 },
   panel: { position: 'fixed', right: 24, bottom: 98, width: 'min(380px, calc(100vw - 32px))', height: 'min(620px, calc(100vh - 128px))', background: '#fff', border: '1px solid #E3E3E3', borderRadius: 18, boxShadow: '0 24px 70px rgba(38, 45, 69, 0.24)', display: 'flex', flexDirection: 'column', overflow: 'hidden', zIndex: 1000 },
-  header: { background: '#262D45', color: '#fff', padding: '16px 18px', display: 'flex', justifyContent: 'space-between', gap: 12 },
+  header: { background: '#E0232C', color: '#fff', padding: '16px 18px', display: 'flex', justifyContent: 'space-between', gap: 12 },
   title: { margin: 0, fontSize: 16, fontWeight: 800, lineHeight: '22px' },
   subtitle: { margin: '2px 0 0', fontSize: 12, opacity: 0.78, lineHeight: '16px' },
   close: { width: 32, height: 32, borderRadius: '50%', border: '1px solid rgba(255,255,255,0.3)', background: 'transparent', color: '#fff', cursor: 'pointer', fontSize: 18 },
-  messages: { flex: 1, padding: 16, overflowY: 'auto', background: '#F8FCFF' },
+  messages: { flex: 1, padding: 16, overflowY: 'auto', background: '#FBF6F7' },
   botMessage: { maxWidth: '86%', marginBottom: 10, padding: '10px 12px', borderRadius: '14px 14px 14px 4px', background: '#fff', color: '#262D45', fontSize: 14, lineHeight: '20px', boxShadow: '0 3px 10px rgba(55, 106, 136, 0.08)', whiteSpace: 'pre-line' },
-  userMessage: { maxWidth: '86%', margin: '0 0 10px auto', padding: '10px 12px', borderRadius: '14px 14px 4px 14px', background: '#1CA0DF', color: '#fff', fontSize: 14, lineHeight: '20px', whiteSpace: 'pre-line' },
+  userMessage: { maxWidth: '86%', margin: '0 0 10px auto', padding: '10px 12px', borderRadius: '14px 14px 4px 14px', background: '#E0232C', color: '#fff', fontSize: 14, lineHeight: '20px', whiteSpace: 'pre-line' },
   suggestions: { display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 4, marginBottom: 8 },
-  suggestionButton: { border: '1px solid #BFE7FA', background: '#fff', color: '#105778', borderRadius: 999, padding: '8px 10px', fontSize: 12, fontWeight: 700, cursor: 'pointer' },
+  suggestionButton: { border: '1px solid #F3C5C8', background: '#fff', color: '#C41E26', borderRadius: 999, padding: '8px 10px', fontSize: 12, fontWeight: 700, cursor: 'pointer' },
   inputRow: { display: 'flex', gap: 8, padding: 14, borderTop: '1px solid #E3E3E3', background: '#fff' },
   input: { flex: 1, minWidth: 0, border: '1px solid #D8DEE8', borderRadius: 999, padding: '11px 14px', fontSize: 14, outline: 'none' },
   send: { border: 'none', borderRadius: 999, background: '#E0232C', color: '#fff', padding: '0 16px', fontSize: 14, fontWeight: 800, cursor: 'pointer' },
@@ -198,16 +205,20 @@ export default function ChatbotWidget() {
       ?? (v.length >= 3 ? states.find(s => s.name.toLowerCase().includes(v)) : undefined)
   }
 
-  async function fetchQuote(q: QuoteState, liquor: boolean) {
+  async function fetchQuote(q: QuoteState) {
     try {
       const res = await api.get<{ plans: Record<string, QuotePlanLite | null> }>('/quote', {
         params: {
-          event_type:  q.eventType,
-          event_state: q.eventState,
-          persons:     q.persons,
-          event_dates: q.eventDates,
-          liquor:      liquor ? 1 : 0,
-          timezone:    Intl.DateTimeFormat().resolvedOptions().timeZone,
+          event_type:          q.eventType,
+          event_state:         q.eventState,
+          persons:             q.persons,
+          event_dates:         q.eventDates,
+          liquor:              q.liquor ? 1 : 0,
+          host_liquor:         q.hostLiquor ? 1 : 0,
+          private_residence:   q.privateResidence ? 1 : 0,
+          is_venue:            q.isVenue ? 1 : 0,
+          additional_insureds: q.additionalInsureds ?? 0,
+          timezone:            Intl.DateTimeFormat().resolvedOptions().timeZone,
         },
       })
       const plans = res.data.plans ?? {}
@@ -278,17 +289,49 @@ export default function ChatbotWidget() {
       case 'date': {
         const d = normalizeDate(value)
         if (!d) { addBot('Please enter the date as MM/DD/YYYY, e.g. 09/15/2026.'); return }
-        setQuote(q => ({ ...q, eventDates: d, stage: 'alcohol' }))
+        setQuote(q => ({ ...q, eventDates: d, stage: 'venue' }))
+        setQuickReplies([
+          { label: 'Private residence', value: 'private' },
+          { label: 'Commercial venue', value: 'venue' },
+        ])
+        addBot('Where is the event being held?')
+        break
+      }
+      case 'venue': {
+        const v = value.toLowerCase()
+        const isPrivate = v.includes('priv') || v.includes('home') || v.includes('house') || v.includes('backyard')
+        setQuote(q => ({ ...q, privateResidence: isPrivate, isVenue: !isPrivate, stage: 'alcohol' }))
         setQuickReplies([{ label: 'Yes', value: 'yes' }, { label: 'No', value: 'no' }])
-        addBot('Will alcohol be served at the event? (yes / no)')
+        addBot(`${isPrivate ? 'Private residence' : 'Commercial venue'} ✓. Will alcohol be served at the event?`)
         break
       }
       case 'alcohol': {
         const yes = /^y/i.test(value.trim()) || value.toLowerCase().includes('yes')
+        if (!yes) {
+          setQuote(q => ({ ...q, liquor: false, hostLiquor: false, stage: 'insured' }))
+          setQuickReplies([{ label: '0', value: '0' }, { label: '1', value: '1' }, { label: '2', value: '2' }])
+          addBot('Got it — no alcohol. Last question: how many additional insureds do you need (e.g. your venue)? Enter a number, or 0.')
+        } else {
+          setQuote(q => ({ ...q, stage: 'alcohol_type' }))
+          setQuickReplies([{ label: 'Sold to guests', value: 'sold' }, { label: 'Free / hosted', value: 'free' }])
+          addBot('Will the alcohol be sold to guests, or provided free of charge?')
+        }
+        break
+      }
+      case 'alcohol_type': {
+        const sold = value.toLowerCase().includes('sold') || value.toLowerCase().includes('sell')
+        setQuote(q => ({ ...q, liquor: sold, hostLiquor: !sold, stage: 'insured' }))
+        setQuickReplies([{ label: '0', value: '0' }, { label: '1', value: '1' }, { label: '2', value: '2' }])
+        addBot('Last question: how many additional insureds do you need (e.g. your venue)? Enter a number, or 0.')
+        break
+      }
+      case 'insured': {
+        const parsed = parseInt(value.replace(/[^0-9]/g, ''), 10)
+        const count = Number.isNaN(parsed) ? 0 : Math.min(parsed, 99)
         setQuickReplies([])
-        setQuote(q => ({ ...q, liquor: yes, stage: 'loading' }))
-        addBot('Calculating your quote… ⏳')
-        void fetchQuote(quote, yes)
+        setQuote(q => ({ ...q, additionalInsureds: count, stage: 'loading' }))
+        addBot('Perfect — calculating your quote… ⏳')
+        void fetchQuote({ ...quote, additionalInsureds: count })
         break
       }
       default:
