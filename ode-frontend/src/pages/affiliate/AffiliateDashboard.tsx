@@ -415,7 +415,7 @@ function SalesView({ stats }: { stats: StatsResponse | undefined }) {
 
 // ─── Profile view ─────────────────────────────────────────────────────────────
 
-function ProfileView({ stats }: { stats: StatsResponse | undefined }) {
+function ProfileView({ stats: _stats }: { stats: StatsResponse | undefined }) {
   const { user } = useAuth()
   const referralLink = `${window.location.origin}/onedayevent?ref=${user?.referral_string ?? ''}`
 

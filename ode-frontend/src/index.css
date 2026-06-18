@@ -114,6 +114,113 @@ body {
   color: var(--brand);
 }
 
+/* Quote wizard controls */
+.quote-event-options {
+  gap: 14px;
+  margin-bottom: 32px;
+}
+
+.quote-event-pill {
+  min-height: 54px;
+  border: 1.5px solid var(--brand-dark);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--text-heading);
+  padding: 0 18px;
+  font-size: 16px;
+  font-weight: 800;
+  line-height: 1.15;
+  text-align: center;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(16, 87, 120, 0.06);
+  transition: background-color 0.18s ease, border-color 0.18s ease, color 0.18s ease,
+    box-shadow 0.18s ease, transform 0.18s ease;
+}
+
+.quote-event-pill:hover:not(:disabled) {
+  border-color: var(--brand);
+  color: var(--brand-dark);
+  background: #f5fbff;
+  box-shadow: 0 8px 20px rgba(28, 160, 223, 0.14);
+  transform: translateY(-1px);
+}
+
+.quote-event-pill:focus-visible {
+  outline: 3px solid rgba(28, 160, 223, 0.24);
+  outline-offset: 3px;
+}
+
+.quote-event-pill.is-selected {
+  border-color: var(--cta);
+  background: var(--cta);
+  color: #fff;
+  box-shadow: 0 10px 22px rgba(224, 35, 44, 0.22);
+}
+
+.quote-event-pill:disabled {
+  cursor: not-allowed;
+  opacity: 0.58;
+  box-shadow: none;
+}
+
+.quote-event-input {
+  height: 58px;
+  border: 1.5px solid #d8dee8;
+  border-radius: 999px;
+  background: #fff;
+  color: var(--text-heading);
+  padding: 0 20px;
+  font-size: 15px;
+  font-weight: 700;
+  outline: none;
+  box-shadow: 0 5px 14px rgba(55, 106, 136, 0.08);
+  transition: border-color 0.18s ease, box-shadow 0.18s ease, background-color 0.18s ease;
+}
+
+.quote-event-input::placeholder {
+  color: #9aa3b2;
+  font-weight: 600;
+}
+
+.quote-event-input:focus {
+  border-color: var(--brand);
+  box-shadow: 0 0 0 4px rgba(28, 160, 223, 0.16), 0 8px 22px rgba(55, 106, 136, 0.12);
+}
+
+.quote-event-input[aria-invalid='true'] {
+  border-color: var(--cta);
+  box-shadow: 0 0 0 4px rgba(224, 35, 44, 0.12);
+}
+
+.quote-next-btn:hover:not(:disabled) {
+  background-color: var(--cta-hover) !important;
+  box-shadow: 0 12px 24px rgba(224, 35, 44, 0.22);
+  transform: translateY(-1px);
+}
+
+.quote-next-btn:focus-visible {
+  outline: 3px solid rgba(224, 35, 44, 0.22);
+  outline-offset: 4px;
+}
+
+.quote-next-btn:disabled {
+  box-shadow: none;
+}
+
+@media (max-width: 767px) {
+  .quote-event-options {
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 26px;
+  }
+
+  .quote-event-pill {
+    width: 100%;
+    min-height: 52px;
+    padding: 0 16px;
+  }
+}
+
 /* ── Footer social icon hover ────────────────────────────────────────────── */
 .social-icon {
   width: 36px;

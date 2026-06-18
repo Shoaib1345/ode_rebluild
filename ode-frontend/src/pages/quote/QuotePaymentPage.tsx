@@ -167,7 +167,7 @@ function PaymentPageShell({ backTo, children }: { backTo: string; children: Reac
       {/* ── 3-step checkout progress bar ────────────────────────────────── */}
       <div style={{ padding: '0 32px', marginBottom: 44 }}>
         <div style={{ display: 'flex', gap: 10 }}>
-          {CHECKOUT_LABELS.map((label, i) => (
+          {CHECKOUT_LABELS.map((label, _i) => (
             <div key={label} style={{ flex: 1, textAlign: 'center' }}>
               <div
                 style={{

@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import type { JSX, ReactNode } from 'react'
 import { NavLink, Link, useNavigate, useLocation } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { useAuth } from '../../hooks/useAuth'
@@ -15,11 +16,6 @@ const IcDashboard = () => (
 const IcLeads = () => (
   <svg className="h-[18px] w-[18px] flex-shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor">
     <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
-  </svg>
-)
-const IcPlus = () => (
-  <svg className="h-[18px] w-[18px] flex-shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor">
-    <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
   </svg>
 )
 const IcEdit = () => (
@@ -83,13 +79,14 @@ const IcMenu = () => (
     <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
   </svg>
 )
-const IcAmend = () => (
-  <svg className="h-[18px] w-[18px] flex-shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor">
-    <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-  </svg>
-)
 
 // ─── Nav config ───────────────────────────────────────────────────────────────
+
+const IcBot = () => (
+  <svg className="h-[18px] w-[18px] flex-shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" d="M9.75 9.75h.008v.008H9.75V9.75zm4.5 0h.008v.008h-.008V9.75zM12 3v2.25M7.5 6h9a2.25 2.25 0 012.25 2.25v6A2.25 2.25 0 0116.5 16.5h-9A2.25 2.25 0 015.25 14.25v-6A2.25 2.25 0 017.5 6zm-3 6H3.75m16.5 0H19.5M9 16.5l-1.5 3m9-3l1.5 3" />
+  </svg>
+)
 
 interface NavItem {
   label: string
@@ -149,21 +146,20 @@ const IcChat = () => (
     <path strokeLinecap="round" strokeLinejoin="round" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
   </svg>
 )
-const IcBot = () => (
-  <svg className="h-[18px] w-[18px] flex-shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor">
-    <path strokeLinecap="round" strokeLinejoin="round" d="M9.75 9.75h.008v.008H9.75V9.75zm4.5 0h.008v.008h-.008V9.75zM12 3v2.25M7.5 6h9a2.25 2.25 0 012.25 2.25v6A2.25 2.25 0 0116.5 16.5h-9A2.25 2.25 0 015.25 14.25v-6A2.25 2.25 0 017.5 6zm-3 6H3.75m16.5 0H19.5M9 16.5l-1.5 3m9-3l1.5 3" />
-  </svg>
-)
-
 // ─── Layout ───────────────────────────────────────────────────────────────────
 
-export default function AdminLayout({ children }: { children: React.ReactNode }) {
+interface AdminLayoutProps {
+  children: ReactNode
+  title?: string
+}
+
+export default function AdminLayout({ children }: AdminLayoutProps) {
   const { user, logout } = useAuth()
   const navigate   = useNavigate()
   const location   = useLocation()
   const [sidebarOpen,  setSidebarOpen]  = useState(false)        // mobile overlay
   const [desktopCollapsed, setDesktopCollapsed] = useState(false) // lg+ collapse
-  const [fullscreen,   setFullscreen]   = useState(false)
+  const [, setFullscreen]   = useState(false)
   const [profileMenuOpen, setProfileMenuOpen] = useState(false)
 
   // The hamburger toggles the mobile overlay on small screens AND collapses the

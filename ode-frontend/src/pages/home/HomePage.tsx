@@ -208,10 +208,6 @@ function FaqAccordion() {
 // ─── Review card ─────────────────────────────────────────────────────────────
 
 function ReviewCard({ name, img, text }: { name: string; img: string; text: string }) {
-  const [expanded, setExpanded] = useState(false)
-  const preview = text.slice(0, 180)
-  const hasMore = text.length > 180
-
   return (
     <div className="relative bg-white rounded-[20px] shadow-[0_0_10px_#ddd] px-6 pt-14 pb-8 text-left">
       {/* Avatar */}
@@ -226,31 +222,21 @@ function ReviewCard({ name, img, text }: { name: string; img: string; text: stri
       </div>
 
       <p className="text-sm font-[600] text-[#505458] leading-relaxed opacity-80">
-        {expanded ? text : preview}{!expanded && hasMore && '…'}
+        {text}
       </p>
-      {hasMore && (
-        <button
-          onClick={() => setExpanded(e => !e)}
-          className="mt-3 text-sm font-semibold text-[#1CA0DF] hover:underline"
-        >
-          {expanded ? 'Show less' : 'Read More'}
-        </button>
-      )}
     </div>
   )
 }
 
-// ─── Reviews carousel (simple prev/next on mobile, grid on desktop) ───────────
+// ─── Reviews grid ────────────────────────────────────────────────────────────
 
 function ReviewsSection() {
-  const [current, setCurrent] = useState(0)
-
   return (
-    <section className="py-16 sm:py-24 text-center overflow-hidden" style={{ marginBottom: '130px' }}>
+    <section className="py-10 sm:py-14 text-center overflow-hidden" style={{ marginBottom: '60px' }}>
       <h2 className="text-[38px] font-[800] text-[#262D45] mb-4">Guaranteed Satisfaction</h2>
 
       {/* Rating summary */}
-      <div className="inline-flex items-center gap-3 mb-12">
+      <div className="inline-flex items-center gap-3 mb-8">
         <span className="text-[40px] font-[800] text-[#E0232C] leading-none">5.0</span>
         <div className="flex flex-col items-start gap-1">
           <Stars />
@@ -258,27 +244,11 @@ function ReviewsSection() {
         </div>
       </div>
 
-      {/* Desktop: grid with avatar offset */}
-      <div className="hidden sm:grid sm:grid-cols-2 lg:grid-cols-4 gap-14 max-w-[1100px] mx-auto px-4 sm:px-6 mt-16">
+      {/* Reviews grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-14 max-w-[1100px] mx-auto px-4 sm:px-6 mt-14">
         {REVIEWS.map(r => (
           <ReviewCard key={r.id} {...r} />
         ))}
-      </div>
-
-      {/* Mobile: carousel */}
-      <div className="sm:hidden px-6 mt-16">
-        <ReviewCard {...REVIEWS[current]} />
-        <div className="flex justify-center gap-3 mt-8">
-          {REVIEWS.map((_, i) => (
-            <button
-              key={i}
-              onClick={() => setCurrent(i)}
-              className={`w-2.5 h-2.5 rounded-full transition-colors ${
-                i === current ? 'bg-[#1CA0DF]' : 'bg-gray-300'
-              }`}
-            />
-          ))}
-        </div>
       </div>
     </section>
   )
@@ -342,7 +312,7 @@ export default function HomePage() {
       <section className="hero-section w-full text-center bg-white">
 
         {/* Text area — padded to clear the 72px sticky transparent header */}
-        <div style={{ paddingTop: '145px', paddingBottom: '20px', paddingLeft: '16px', paddingRight: '16px' }}>
+        <div style={{ paddingTop: '96px', paddingBottom: '12px', paddingLeft: '16px', paddingRight: '16px' }}>
           <h1
             className="font-[900] leading-[1.1] mb-[10px] text-[#262D45]"
             style={{ fontSize: '50px' }}
@@ -369,15 +339,23 @@ export default function HomePage() {
           </Link>
         </div>
 
-        {/* Hero background image — 800px tall */}
+        {/* Hero image */}
         <div
+          className="flex w-full items-end justify-center overflow-visible"
           style={{
-            height: '800px',
-            width: '100%',
-            background: 'url(/assets/images/hero-bg2.webp) no-repeat center bottom',
-            backgroundSize: '120%',
+            minHeight: 'min(801px, calc(100vw * 0.4873))',
           }}
-        />
+        >
+          <img
+            src="/assets/images/hero-bg2.webp"
+            alt=""
+            className="block h-auto w-full"
+            style={{
+              maxWidth: '1644px',
+              objectPosition: 'center bottom',
+            }}
+          />
+        </div>
       </section>
 
       {/* ════════════════════════════════════════════════════════════════════
@@ -385,7 +363,7 @@ export default function HomePage() {
       ════════════════════════════════════════════════════════════════════ */}
       <section
         className="w-[1030px] max-w-full mx-auto px-4 sm:px-6 text-center"
-        style={{ marginTop: '-55px', position: 'relative', zIndex: 1, marginBottom: '100px' }}
+        style={{ marginTop: '-55px', position: 'relative', zIndex: 1, marginBottom: '60px' }}
       >
         <h2
           className="font-[900] text-[#262D45] w-full text-center mb-[30px]"
@@ -445,7 +423,7 @@ export default function HomePage() {
       {/* ════════════════════════════════════════════════════════════════════
           3. CUSTOMER PORTAL  — home-portal.svg, 100px padding, exact shadow
       ════════════════════════════════════════════════════════════════════ */}
-      <section className="w-[1030px] max-w-full mx-auto px-4 sm:px-6" style={{ marginBottom: '100px' }}>
+      <section className="w-[1030px] max-w-full mx-auto px-4 sm:px-6" style={{ marginBottom: '60px' }}>
         <div
           className="flex flex-col sm:flex-row items-center gap-8"
           style={{
@@ -496,7 +474,7 @@ export default function HomePage() {
       {/* ════════════════════════════════════════════════════════════════════
           4. FAQ
       ════════════════════════════════════════════════════════════════════ */}
-      <section className="w-[1030px] max-w-full mx-auto px-4 sm:px-6" style={{ marginBottom: '80px' }}>
+      <section className="w-[1030px] max-w-full mx-auto px-4 sm:px-6" style={{ marginBottom: '50px' }}>
         <h2
           className="font-[900] text-[#262D45] text-center w-full mb-[30px]"
           style={{ fontSize: '38px' }}
@@ -567,23 +545,28 @@ export default function HomePage() {
         className="w-full overflow-hidden"
         style={{
           background: 'linear-gradient(180deg, rgba(248,252,255,0) 0%, #F8FCFF 68.5%)',
-          marginBottom: '100px',
+          marginBottom: '60px',
         }}
       >
         {/* Desktop layout: image left | text right */}
-        <div className="hidden lg:flex" style={{ minHeight: '750px' }}>
+        <div
+          className="mx-auto flex max-w-[1030px] flex-col items-start gap-8 px-4 sm:px-6 lg:flex-row lg:items-center"
+          style={{ minHeight: '520px', paddingTop: '50px', paddingBottom: '50px' }}
+        >
           {/* Left: giving-bg.webp */}
           <div
             style={{
-              width: '670px',
+              width: 'min(100%, 430px)',
+              height: '420px',
               flexShrink: 0,
               background: 'url(/assets/images/giving-bg.webp) bottom left no-repeat',
+              backgroundSize: 'contain',
             }}
           />
           {/* Right: text */}
           <div
             className="flex items-start"
-            style={{ flex: 1, paddingTop: '220px', paddingRight: '11.3%', paddingLeft: '50px' }}
+            style={{ flex: 1, paddingLeft: 'clamp(0px, 4vw, 50px)' }}
           >
             <div style={{ maxWidth: '516px' }}>
               <h2
@@ -602,7 +585,7 @@ export default function HomePage() {
               </p>
               <ul
                 className="flex justify-between items-center"
-                style={{ marginTop: '60px' }}
+                style={{ marginTop: '36px' }}
               >
                 {GIVING.map((src, i) => (
                   <li
@@ -621,34 +604,6 @@ export default function HomePage() {
             </div>
           </div>
         </div>
-
-        {/* Mobile layout */}
-        <div className="lg:hidden px-6 py-16">
-          <div className="max-w-[516px] mx-auto text-center sm:text-left">
-            <h2
-              className="font-[800] text-[#262D45]"
-              style={{ fontSize: '36px', lineHeight: '48px', marginBottom: '16px' }}
-            >
-              Giving Back
-            </h2>
-            <p className="font-[600] text-[#505458] text-base leading-[24px]">
-              We work with 4 different organizations to support causes locally &amp; globally,
-              plus we're 100% paperless. Our customers can donate $1 from every purchase to one
-              of our selected charities. With your help, even the smallest event can have a big impact.
-            </p>
-            <div className="mt-10 flex flex-wrap gap-6 items-center justify-center sm:justify-start">
-              {GIVING.map((src, i) => (
-                <img
-                  key={i}
-                  src={src}
-                  alt={`Charity partner ${i + 1}`}
-                  className="h-14 object-contain"
-                  onError={e => { (e.target as HTMLImageElement).style.display = 'none' }}
-                />
-              ))}
-            </div>
-          </div>
-        </div>
       </section>
 
       {/* ════════════════════════════════════════════════════════════════════
@@ -659,8 +614,8 @@ export default function HomePage() {
       {/* ════════════════════════════════════════════════════════════════════
           8. BLOG
       ════════════════════════════════════════════════════════════════════ */}
-      <section className="w-[1030px] max-w-full mx-auto px-4 sm:px-6" style={{ marginBottom: '100px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '48px' }}>
+      <section className="w-[1030px] max-w-full mx-auto px-4 sm:px-6" style={{ marginBottom: '60px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '32px' }}>
           <h2
             className="font-[900] text-[#262D45]"
             style={{ fontSize: '38px', lineHeight: '1.2' }}
@@ -713,7 +668,7 @@ export default function HomePage() {
       {/* ════════════════════════════════════════════════════════════════════
           9. HAVE QUESTIONS?  — Contact (btn-brand) + FAQ (btn-primary w/ pink hover)
       ════════════════════════════════════════════════════════════════════ */}
-      <section className="questions-section text-center py-16 px-4" style={{ marginBottom: '100px' }}>
+      <section className="questions-section text-center py-12 px-4" style={{ marginBottom: '60px' }}>
         <div className="max-w-[780px] mx-auto">
           <h2
             className="font-[900] text-[#262D45] mb-4"

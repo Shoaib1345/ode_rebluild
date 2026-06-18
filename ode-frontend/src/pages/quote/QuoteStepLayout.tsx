@@ -44,7 +44,6 @@ export default function QuoteStepLayout({
   subtitle,
   image,
   imageLarge,
-  innerNarrow,
   wide,
   backTo,
   checkoutStep,
@@ -59,6 +58,7 @@ export default function QuoteStepLayout({
 
   // Outer 1030px container matches legacy `.quote-pg header .container` + `.quote-pg .quote`
   const OUTER_MAX = 1030
+  const FORM_MAX = 680
 
   return (
     <div className="min-h-screen bg-white" style={{ position: 'relative' }}>
@@ -223,7 +223,7 @@ export default function QuoteStepLayout({
 
         {/* ── Outer content (1030px) — holds wide title/subtitle ────────────── */}
         <div
-          className="px-5 sm:px-8"
+          className={wide ? 'px-5 sm:px-8' : 'px-0 md:px-8'}
           style={{
             maxWidth: OUTER_MAX,
             margin: '0 auto',
@@ -234,11 +234,15 @@ export default function QuoteStepLayout({
           {/* 1. Title — wide canvas so it doesn't wrap awkwardly */}
           {title && (
             <h2
+              className="quote-step-heading"
               style={{
                 fontSize: 32,
                 lineHeight: '39px',
                 fontWeight: 900,
                 marginBottom: subtitle ? 12 : 30,
+                marginLeft: 'auto',
+                marginRight: 'auto',
+                maxWidth: FORM_MAX,
                 textAlign: 'center',
                 color: '#262D45',
               }}
@@ -250,12 +254,16 @@ export default function QuoteStepLayout({
           {/* 2. Subtitle — also wide */}
           {subtitle && (
             <p
+              className="quote-step-subtitle"
               style={{
                 textAlign: 'center',
                 color: '#797979',
                 fontSize: 14,
                 marginBottom: 24,
                 lineHeight: '22px',
+                marginLeft: 'auto',
+                marginRight: 'auto',
+                maxWidth: FORM_MAX,
               }}
             >
               {subtitle}
@@ -264,11 +272,13 @@ export default function QuoteStepLayout({
 
           {/* ── Inner (568px / 426 narrow / 1000 wide) — image + form ───────── */}
           <div
+            className={wide ? undefined : 'px-4 md:px-0'}
             style={{
-              maxWidth: wide ? 1000 : (innerNarrow ? 426 : 568),
+              maxWidth: wide ? 1000 : FORM_MAX,
               width: '100%',
               margin: '0 auto',
               boxSizing: 'border-box',
+              position: 'relative',
             }}
           >
             {/* 3. Illustration image */}
@@ -289,25 +299,29 @@ export default function QuoteStepLayout({
             {children}
 
             {/* Breathing room before footer wave shows */}
-            <div style={{ height: 60 }} />
+            <div style={{ height: 72 }} />
+            {!wide && (
+              <div
+                style={{
+                  position: 'relative',
+                  zIndex: 0,
+                  marginTop: -260,
+                  height: 418,
+                  backgroundImage: 'url(/assets/images/quote-footer-bg.png)',
+                  backgroundRepeat: 'no-repeat',
+                  backgroundPosition: 'bottom center',
+                  backgroundSize: 'cover',
+                  pointerEvents: 'none',
+                  borderRadius: '0 0 18px 18px',
+                  overflow: 'hidden',
+                }}
+              />
+            )}
           </div>
         </div>
       </div>
 
-      {/* ── Footer wave ──────────────────────────────────────────────────── */}
-      <div
-        style={{
-          position: 'relative',
-          zIndex: 0,
-          marginTop: -260,
-          height: 418,
-          backgroundImage: 'url(/assets/images/quote-footer-bg.png)',
-          backgroundRepeat: 'no-repeat',
-          backgroundPosition: 'bottom center',
-          backgroundSize: 'cover',
-          pointerEvents: 'none',
-        }}
-      />
+      {/* â”€â”€ Footer wave â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
     </div>
   )
 }
@@ -364,17 +378,23 @@ export function QuoteNextBtn({
   disabled,
   children = 'Next',
   fullWidth,
+  loading,
 }: {
   onClick?: () => void
   disabled?: boolean
   children?: React.ReactNode
   fullWidth?: boolean
+  loading?: boolean
 }) {
+  const isDisabled = disabled || loading
+
   return (
     <button
       type={onClick ? 'button' : 'submit'}
       onClick={onClick}
-      disabled={disabled}
+      disabled={isDisabled}
+      aria-busy={loading || undefined}
+      className="quote-next-btn"
       style={{
         display: 'block',
         width: fullWidth ? '100%' : 158,
@@ -383,14 +403,14 @@ export function QuoteNextBtn({
         height: 60,
         borderRadius: 60,
         margin: '60px auto 0',
-        backgroundColor: disabled ? '#D5D9E6' : '#E0232C',
+        backgroundColor: isDisabled ? '#D5D9E6' : '#E0232C',
         color: '#fff',
         fontSize: 17,
         fontWeight: 700,
         textAlign: 'center',
         border: 'none',
-        cursor: disabled ? 'not-allowed' : 'pointer',
-        transition: 'background-color 0.15s',
+        cursor: isDisabled ? 'not-allowed' : 'pointer',
+        transition: 'background-color 0.15s, transform 0.15s, box-shadow 0.15s',
       }}
     >
       {children}
