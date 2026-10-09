@@ -109,13 +109,13 @@ export default function EventTypePage() {
       image="/assets/images/quote-type.png"
       innerNarrow
     >
-
       {/* ── Quick-pick row: Wedding | Birthday | Vendor at Event ─────────── */}
       <div
-        className="quote-event-options"
         style={{
           display: 'flex',
           alignItems: 'center',
+          gap: 14,
+          marginBottom: 35,
         }}
       >
         {QUICK_PICKS.map(({ db, label }) => (
@@ -124,11 +124,24 @@ export default function EventTypePage() {
             type="button"
             onClick={() => handleQuickPick(db)}
             disabled={isLoading}
-            className={`quote-event-pill ${activeDb === db ? 'is-selected' : ''}`}
             style={{
               flex: 1,
               minWidth: 0,
+              height: 54,
+              fontSize: 16,
+              fontWeight: 600,
+              textAlign: 'center',
+              borderRadius: 10,
               whiteSpace: 'nowrap',
+              border: activeDb === db
+                ? '1px solid #E0232C'
+                : '1px solid #105778',
+              backgroundColor: activeDb === db ? '#E0232C' : '#fff',
+              color: activeDb === db ? '#fff' : '#262D45',
+              cursor: isLoading ? 'not-allowed' : 'pointer',
+              opacity: isLoading ? 0.5 : 1,
+              transition: 'background-color 0.15s, color 0.15s, border-color 0.15s',
+              padding: '0 12px',
             }}
           >
             {label}
@@ -143,8 +156,6 @@ export default function EventTypePage() {
           type="text"
           value={query}
           placeholder="Type your event in here"
-          aria-invalid={open && query.trim().length > 0 && filtered.length === 0 && !isLoading}
-          className="quote-event-input"
           onChange={(e) => {
             setQuery(e.target.value)
             setSelected(null)
@@ -154,7 +165,15 @@ export default function EventTypePage() {
           onFocus={() => setOpen(true)}
           style={{
             width: '100%',
+            height: 54,
+            borderRadius: 10,
+            border: '1px solid #DFDFDF',
+            padding: '0 16px',
+            fontSize: 15,
+            color: '#262D45',
+            outline: 'none',
             boxSizing: 'border-box',
+            background: '#fff',
           }}
         />
 
@@ -233,7 +252,7 @@ export default function EventTypePage() {
       </div>
 
       {/* ── Helper text ──────────────────────────────────────────────────── */}
-      <p className="quote-helper-text" style={{ textAlign: 'center', fontSize: 13, color: '#797979', marginTop: 12, marginBottom: 4, lineHeight: '20px' }}>
+      <p style={{ textAlign: 'center', fontSize: 13, color: '#262D45', marginTop: 10, marginBottom: 4 }}>
         Please type in your event if you do not see it in the dropdown
       </p>
 
@@ -244,10 +263,9 @@ export default function EventTypePage() {
       )}
 
       {/* ── Next ─────────────────────────────────────────────────────────── */}
-      <QuoteNextBtn onClick={handleNext} disabled={!selected} loading={isLoading}>
+      <QuoteNextBtn onClick={handleNext} disabled={!selected}>
         Next
       </QuoteNextBtn>
-
     </QuoteStepLayout>
   )
 }

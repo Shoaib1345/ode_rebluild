@@ -349,7 +349,7 @@ const SOCIAL = [
   },
 ]
 
-function Footer() {
+export function Footer() {
   const { data: navPages = [] } = useNavPages()
 
   return (
