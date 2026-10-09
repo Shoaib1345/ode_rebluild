@@ -656,5 +656,11 @@ curl https://api.onedayevent.com/api/health
 ```
 
 For full production checklist, see `ode-api/.env.example` (bottom section).
+<<<<<<< HEAD
 #   o d e _ r e b u i l d  
  
+=======
+#   o d e _ r e b u i l d 
+ 
+ 
+>>>>>>> origin/main
