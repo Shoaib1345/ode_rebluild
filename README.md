@@ -1,39 +1,50 @@
 # One Day Event — Rebuild
 
-Laravel 12 API + React 18 / TypeScript frontend for the One Day Event insurance platform.
+A rebuild of the One Day Event insurance platform: a **Laravel 12 REST API** and a **React 18 + TypeScript** single-page frontend.
+
+Customers get an instant quote, buy a one-day event policy, and pay by card. Staff manage leads, invoices and content from an admin area, and affiliates track their referrals in their own portal.
 
 ---
 
-## Table of Contents
+## Contents
 
+- [Quick Start](#quick-start)
 - [Project Structure](#project-structure)
 - [Tech Stack](#tech-stack)
-- [Local Development Setup](#local-development-setup)
-  - [Prerequisites](#prerequisites)
-  - [API Setup (Laravel)](#api-setup-laravel)
-  - [Frontend Setup (React)](#frontend-setup-react)
-  - [Running Both Together](#running-both-together)
+- [Local Development](#local-development)
 - [Environment Variables](#environment-variables)
-  - [API (.env)](#api-env)
-  - [Frontend (.env.local)](#frontend-envlocal)
+- [Authentication & Roles](#authentication--roles)
 - [API Reference](#api-reference)
-  - [Public Endpoints](#public-endpoints)
-  - [Auth Endpoints](#auth-endpoints)
-  - [Quote Engine](#quote-engine)
-  - [Lead & Payment](#lead--payment)
-  - [Public Invoice](#public-invoice)
-  - [Affiliate Signup](#affiliate-signup)
-  - [Partner Signup](#partner-signup)
-  - [Public Pages & Blog](#public-pages--blog)
-  - [Admin Endpoints (auth required)](#admin-endpoints-auth-required)
-  - [Affiliate Portal (auth required)](#affiliate-portal-auth-required)
 - [Rate Limiting](#rate-limiting)
-- [Authentication](#authentication)
 - [Frontend Routes](#frontend-routes)
 - [Database](#database)
-- [Artisan Commands](#artisan-commands)
 - [Queue Workers](#queue-workers)
+- [Artisan Commands](#artisan-commands)
+- [Legacy Data Migration](#legacy-data-migration)
 - [Production Deployment](#production-deployment)
+
+---
+
+## Quick Start
+
+```bash
+# API  (terminal 1)
+cd ode-api
+composer install
+cp .env.example .env            # then set DB_DATABASE / DB_USERNAME / DB_PASSWORD
+php artisan key:generate
+php artisan migrate --seed
+php artisan serve               # http://localhost:8000
+
+# Frontend  (terminal 2)
+cd ode-frontend
+npm install
+npm run dev                     # http://localhost:5173
+```
+
+Health check: `GET http://localhost:8000/api/health`
+
+> You must create the MySQL database first — see [Local Development](#local-development).
 
 ---
 
@@ -44,7 +55,7 @@ ode-rebuild/
 ├── ode-api/              Laravel 12 REST API
 ├── ode-frontend/         React 18 + TypeScript SPA
 ├── deploy/
-│   ├── nginx/            nginx server configs (API + frontend)
+│   ├── nginx/            nginx configs (API + frontend)
 │   ├── scripts/          deploy.sh, first-deploy.sh
 │   └── supervisor/       Queue worker config
 └── checkpoints/          Per-chunk build notes
@@ -56,117 +67,97 @@ ode-rebuild/
 
 | Layer | Technology |
 |-------|-----------|
-| API framework | Laravel 12 |
+| API framework | Laravel 12 (PHP 8.2+) |
 | API auth | Laravel Sanctum (token-based) |
-| PHP | 8.2+ |
 | Database | MySQL 8 |
 | Queue / cache | Database driver (Redis optional) |
 | File storage | AWS S3 |
 | Payments | Stripe |
 | PDF generation | barryvdh/laravel-dompdf |
-| Frontend | React 18 + TypeScript + Vite 6 |
+| Frontend | React 18, TypeScript, Vite 6 |
 | Routing | React Router 6 |
 | Data fetching | TanStack React Query 5 |
-| Forms | React Hook Form + Zod |
+| Forms / validation | React Hook Form + Zod |
 | Styling | Tailwind CSS 4 |
 | State | Zustand |
 | UI primitives | Headless UI + Heroicons |
 
 ---
 
-## Local Development Setup
+## Local Development
 
 ### Prerequisites
 
 - PHP 8.2+ with extensions: `mbstring`, `xml`, `bcmath`, `curl`, `zip`, `mysql`
 - Composer 2
-- MySQL 8 running locally
-- Node.js 20+
-- npm 10+
+- MySQL 8
+- Node.js 20+ and npm 10+
 
-### API Setup (Laravel)
+### API (Laravel)
 
 ```bash
 cd ode-api
 
-# 1. Install PHP dependencies
+# 1. Install dependencies
 composer install
 
-# 2. Copy env and fill in values (see Environment Variables below)
+# 2. Create your env file
 cp .env.example .env
-
-# 3. Update .env with your local DB credentials and keys
 #    Minimum required: DB_DATABASE, DB_USERNAME, DB_PASSWORD
 
-# 4. Generate app key
+# 3. Generate the app key
 php artisan key:generate
 
-# 5. Create the database (once)
+# 4. Create the database (once)
 mysql -u root -p -e "CREATE DATABASE ode_rebuild CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
 
-# 6. Run migrations
+# 5. Run migrations and seed initial data
+#    (event types, US states, admin user, etc.)
 php artisan migrate
-
-# 7. Seed initial data (event types, US states, admin user, etc.)
 php artisan db:seed
 
-# 8. Start the dev server on port 8000
+# 6. Start the dev server
 php artisan serve
 ```
 
-The API will be available at `http://localhost:8000`.  
-Health check: `GET http://localhost:8000/api/health`
+API: `http://localhost:8000`
 
-### Frontend Setup (React)
+### Frontend (React)
 
 ```bash
 cd ode-frontend
 
-# 1. Install npm dependencies
 npm install
 
-# 2. Copy env (already present as .env.local — edit if needed)
-#    VITE_API_URL should point to your running Laravel server
-cp .env.local .env.local   # already exists, just verify contents
-
-# 3. Start the Vite dev server on port 5173
+# .env.local already exists — just check that VITE_API_URL
+# points at your running Laravel server
 npm run dev
 ```
 
-The frontend will be available at `http://localhost:5173`.
+Frontend: `http://localhost:5173`
 
-### Running Both Together
+### Queue worker (optional)
 
-Open two terminal tabs:
-
-```bash
-# Tab 1 — API
-cd ode-api && php artisan serve
-
-# Tab 2 — Frontend
-cd ode-frontend && npm run dev
-```
-
-Optionally, start the queue worker in a third tab to process emails:
+Emails are sent by queued jobs. To process them locally, run a worker in a third terminal:
 
 ```bash
-# Tab 3 — Queue worker (needed for email sending)
-cd ode-api && php artisan queue:work --tries=3
+cd ode-api
+php artisan queue:work --tries=3
 ```
+
+With the default `MAIL_MAILER=log`, email content is written to `storage/logs/laravel.log` instead of being sent.
 
 ---
 
 ## Environment Variables
 
-### API (.env)
+### API (`ode-api/.env`)
 
-Copy `ode-api/.env.example` to `ode-api/.env`.
-
-| Variable | Description | Local Default |
+| Variable | Description | Local default |
 |----------|-------------|---------------|
 | `APP_KEY` | Generated by `php artisan key:generate` | — |
 | `APP_ENV` | `local` / `staging` / `production` | `local` |
-| `APP_DEBUG` | Show stack traces — `false` in production | `true` |
+| `APP_DEBUG` | Show stack traces (**must be `false` in production**) | `true` |
 | `APP_URL` | Full API base URL | `http://localhost:8000` |
 | `DB_DATABASE` | MySQL database name | `ode_rebuild` |
 | `DB_USERNAME` | MySQL username | `root` |
@@ -176,11 +167,11 @@ Copy `ode-api/.env.example` to `ode-api/.env`.
 | `MAIL_MAILER` | `log` locally, `smtp` in production | `log` |
 | `FRONTEND_URL` | React app URL (used in email links) | `http://localhost:5173` |
 | `CORS_ALLOWED_ORIGINS` | Comma-separated allowed origins | `http://localhost:5173` |
-| `SANCTUM_TOKEN_EXPIRY` | Token lifetime in minutes (default 7 days) | `10080` |
+| `SANCTUM_TOKEN_EXPIRY` | Token lifetime in minutes | `10080` (7 days) |
 | `QUEUE_CONNECTION` | `database` or `redis` | `database` |
 | `FILESYSTEM_DISK` | `local` for dev, `s3` for production | `local` |
 
-**Legacy migration only (remove after Chunk 29 migration):**
+**Legacy migration only** — remove once the migration is complete:
 
 | Variable | Description |
 |----------|-------------|
@@ -189,38 +180,63 @@ Copy `ode-api/.env.example` to `ode-api/.env`.
 | `LEGACY_DB_USERNAME` | Old database user |
 | `LEGACY_DB_PASSWORD` | Old database password |
 
-### Frontend (.env.local)
+### Frontend (`ode-frontend/.env.local`)
 
-| Variable | Description | Local Default |
+| Variable | Description | Local default |
 |----------|-------------|---------------|
-| `VITE_API_URL` | API base URL including `/api` | `http://localhost:8000/api` |
+| `VITE_API_URL` | API base URL, including `/api` | `http://localhost:8000/api` |
 | `VITE_APP_NAME` | App display name | `OneDayEvent` |
 | `VITE_STRIPE_PK` | Stripe publishable key | — |
-| `VITE_GOOGLE_PLACES_API_KEY` | Google Places API key (address autocomplete) | — |
+| `VITE_GOOGLE_PLACES_API_KEY` | Google Places key (address autocomplete) | — |
+
+---
+
+## Authentication & Roles
+
+The API uses **Laravel Sanctum** bearer tokens.
+
+1. `POST /api/auth/login` returns a token.
+2. Send it on every protected request:
+   ```
+   Authorization: Bearer 1|abc123tokenhere
+   ```
+3. Tokens expire after `SANCTUM_TOKEN_EXPIRY` minutes (default 7 days).
+4. `POST /api/auth/logout` revokes the token early.
+
+Roles are stored as `level` on the `users` table:
+
+| Level | Role | Access |
+|-------|------|--------|
+| 1 | Super Admin | Full admin access |
+| 2 | Admin | Full admin access |
+| 6 | Affiliate | Affiliate portal only |
+
+Admin routes require `level <= 2`. Affiliate routes require the affiliate role.
 
 ---
 
 ## API Reference
 
-All endpoints are prefixed with `/api`. All responses are JSON.  
-Base URL (local): `http://localhost:8000/api`
+All endpoints are prefixed with `/api` and return JSON.  
+Local base URL: `http://localhost:8000/api`
 
-### Public Endpoints
+### Public
 
 | Method | Path | Description |
 |--------|------|-------------|
-| `GET` | `/health` | Health check — returns `{"status":"ok"}` |
+| `GET` | `/health` | Health check — `{"status":"ok"}` |
 
----
-
-### Auth Endpoints
+### Auth
 
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
 | `POST` | `/auth/register` | — | Register a new user |
-| `POST` | `/auth/login` | — | Log in, returns Bearer token |
-| `POST` | `/auth/logout` | Bearer token | Revoke current token |
-| `GET` | `/auth/me` | Bearer token | Get authenticated user |
+| `POST` | `/auth/login` | — | Log in, returns a bearer token |
+| `POST` | `/auth/logout` | Bearer | Revoke the current token |
+| `GET` | `/auth/me` | Bearer | Get the authenticated user |
+
+<details>
+<summary>Example requests</summary>
 
 **POST /auth/register**
 ```json
@@ -234,10 +250,7 @@ Base URL (local): `http://localhost:8000/api`
 
 **POST /auth/login**
 ```json
-{
-  "email": "jane@example.com",
-  "password": "secret123"
-}
+{ "email": "jane@example.com", "password": "secret123" }
 ```
 Response:
 ```json
@@ -246,47 +259,37 @@ Response:
   "user": { "id": 1, "name": "Jane Smith", "email": "jane@example.com", "role": "admin" }
 }
 ```
-
-Pass the token on subsequent requests:
-```
-Authorization: Bearer 1|abc123...
-```
-
----
+</details>
 
 ### Quote Engine
 
-All endpoints throttled at **30 requests/minute per IP**.
-
 | Method | Path | Description |
 |--------|------|-------------|
-| `GET` | `/event-types` | List all insurable event types |
-| `GET` | `/us-states` | List US states (for venue state selection) |
+| `GET` | `/event-types` | List insurable event types |
+| `GET` | `/us-states` | List US states (venue state selection) |
 | `GET` | `/quote` | Calculate a quote |
-| `GET` | `/broker-fee` | Calculate broker fee for a quote |
+| `GET` | `/broker-fee` | Calculate the broker fee for a quote |
 
-**GET /quote** — query parameters:
+`/quote` and `/broker-fee` take the same query parameters:
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
 | `event_type_id` | integer | ID from `/event-types` |
 | `state_id` | integer | ID from `/us-states` |
-| `event_date` | date (Y-m-d) | Date of the event |
+| `event_date` | date (`Y-m-d`) | Date of the event |
 | `guest_count` | integer | Number of guests |
 | `coverage_days` | integer | Number of days |
 | `liability` | boolean | Include liability coverage |
 
-**GET /broker-fee** — same parameters as `/quote`.
+### Leads & Payment
 
----
+| Method | Path | Description |
+|--------|------|-------------|
+| `POST` | `/leads` | Submit a quote, create a lead, charge the card |
 
-### Lead & Payment
+<details>
+<summary>Example body</summary>
 
-| Method | Path | Throttle | Description |
-|--------|------|----------|-------------|
-| `POST` | `/leads` | 5/min per IP | Submit quote, create lead, charge card |
-
-**POST /leads** body:
 ```json
 {
   "event_type_id": 3,
@@ -310,32 +313,26 @@ All endpoints throttled at **30 requests/minute per IP**.
   "affiliate_code": "ABC123"
 }
 ```
-
----
+</details>
 
 ### Public Invoice
 
-| Method | Path | Throttle | Description |
-|--------|------|----------|-------------|
-| `GET` | `/invoice/{encodeId}` | — | View invoice by encoded ID |
-| `POST` | `/invoice/{encodeId}/pay` | 5/min per IP | Pay an invoice |
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/invoice/{encodeId}` | View an invoice by encoded ID |
+| `POST` | `/invoice/{encodeId}/pay` | Pay an invoice — body: `{ "stripe_payment_method_id": "pm_..." }` |
 
-**POST /invoice/{encodeId}/pay** body:
-```json
-{
-  "stripe_payment_method_id": "pm_..."
-}
-```
+### Affiliate & Partner Signup
 
----
+| Method | Path | Description |
+|--------|------|-------------|
+| `POST` | `/affiliate/register` | Register as an affiliate |
+| `POST` | `/partner/register` | Register as a partner |
 
-### Affiliate Signup
+<details>
+<summary>Example bodies</summary>
 
-| Method | Path | Throttle | Description |
-|--------|------|----------|-------------|
-| `POST` | `/affiliate/register` | 10/hour per IP | Register as affiliate |
-
-**POST /affiliate/register** body:
+**POST /affiliate/register**
 ```json
 {
   "name": "John Doe",
@@ -346,15 +343,7 @@ All endpoints throttled at **30 requests/minute per IP**.
 }
 ```
 
----
-
-### Partner Signup
-
-| Method | Path | Throttle | Description |
-|--------|------|----------|-------------|
-| `POST` | `/partner/register` | 10/hour per IP | Register as partner (venue, planner, or agent) |
-
-**POST /partner/register** body:
+**POST /partner/register** — `type` must be `venue`, `planner` or `agent`
 ```json
 {
   "type": "venue",
@@ -366,87 +355,45 @@ All endpoints throttled at **30 requests/minute per IP**.
   "message": "Interested in partnership"
 }
 ```
-`type` must be one of: `venue`, `planner`, `agent`
+</details>
 
----
-
-### Public Pages & Blog
+### Pages & Blog (public)
 
 | Method | Path | Description |
 |--------|------|-------------|
-| `GET` | `/pages/nav` | Nav links from CMS (add_to_menu=true, ordered) |
+| `GET` | `/pages/nav` | CMS nav links (`add_to_menu = true`, ordered) |
 | `GET` | `/pages/{slug}` | Full CMS page by slug |
-| `GET` | `/blog` | Paginated published blog posts |
-| `GET` | `/blog/{slug}` | Single blog post by slug |
+| `GET` | `/blog` | Paginated published posts (`page`, `per_page`; defaults 1 and 12) |
+| `GET` | `/blog/{slug}` | Single post by slug |
 
-**GET /blog** — query parameters:
+### Admin (bearer token, admin role)
 
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| `page` | integer | 1 | Page number |
-| `per_page` | integer | 12 | Posts per page |
+| Area | Method | Path | Description |
+|------|--------|------|-------------|
+| Dashboard | `GET` | `/admin/stats` | Leads, revenue, conversions |
+| Leads | `GET` | `/admin/leads` | List leads (filterable, paginated) |
+| | `GET` | `/admin/leads/{id}` | Lead detail with notes, emails, payments |
+| | `PATCH` | `/admin/leads/{id}` | Update lead fields |
+| | `POST` | `/admin/leads/{id}/notes` | Add a note |
+| Invoices | `GET` | `/admin/invoices` | List invoices (paginated) |
+| | `POST` | `/admin/invoices` | Create an invoice |
+| | `GET` | `/admin/invoices/{id}` | Invoice detail with line items |
+| | `PATCH` | `/admin/invoices/{id}` | Update an invoice |
+| | `DELETE` | `/admin/invoices/{id}` | Delete an invoice |
+| Blog | `GET` | `/admin/blog` | List all posts, including drafts |
+| | `POST` | `/admin/blog` | Create a post (slug generated from title) |
+| | `GET` | `/admin/blog/{id}` | Get a post by ID |
+| | `PATCH` | `/admin/blog/{id}` | Update a post |
+| | `DELETE` | `/admin/blog/{id}` | Delete a post |
 
----
+`GET /admin/leads` filters: `search` (name, email or lead number), `status`, `from` / `to` (`Y-m-d`), `page`.
 
-### Admin Endpoints (auth required)
-
-All routes require `Authorization: Bearer <token>` with a user of `role = admin` (`level <= 2`).
-
-#### Dashboard
-
-| Method | Path | Description |
-|--------|------|-------------|
-| `GET` | `/admin/stats` | Dashboard stats (leads, revenue, conversions) |
-
-#### Leads
-
-| Method | Path | Description |
-|--------|------|-------------|
-| `GET` | `/admin/leads` | List all leads (filterable, paginated) |
-| `GET` | `/admin/leads/{id}` | Lead detail with notes, emails, payments |
-| `PATCH` | `/admin/leads/{id}` | Update lead fields |
-| `POST` | `/admin/leads/{id}/notes` | Add a note to a lead |
-
-**GET /admin/leads** — query parameters:
-
-| Parameter | Description |
-|-----------|-------------|
-| `search` | Search by name, email, or lead number |
-| `status` | Filter by lead status |
-| `from` | Date range start (Y-m-d) |
-| `to` | Date range end (Y-m-d) |
-| `page` | Page number |
-
-#### Invoices
-
-| Method | Path | Description |
-|--------|------|-------------|
-| `GET` | `/admin/invoices` | List invoices (paginated) |
-| `POST` | `/admin/invoices` | Create invoice |
-| `GET` | `/admin/invoices/{id}` | Invoice detail with line items |
-| `PATCH` | `/admin/invoices/{id}` | Update invoice |
-| `DELETE` | `/admin/invoices/{id}` | Delete invoice |
-
-#### Blog (Admin)
-
-| Method | Path | Description |
-|--------|------|-------------|
-| `GET` | `/admin/blog` | List all posts (inc. drafts) |
-| `POST` | `/admin/blog` | Create post (slug auto-generated from title) |
-| `GET` | `/admin/blog/{id}` | Get post by ID |
-| `PATCH` | `/admin/blog/{id}` | Update post |
-| `DELETE` | `/admin/blog/{id}` | Delete post |
-
----
-
-### Affiliate Portal (auth required)
-
-Requires `Authorization: Bearer <token>` with a user of `role = affiliate`.
+### Affiliate Portal (bearer token, affiliate role)
 
 | Method | Path | Description |
 |--------|------|-------------|
 | `GET` | `/affiliate/stats` | Referral counts and earnings |
-| `GET` | `/affiliate/referrals` | List referred leads |
+| `GET` | `/affiliate/referrals` | Referred leads |
 | `GET` | `/affiliate/payouts` | Payout history |
 
 ---
@@ -455,35 +402,13 @@ Requires `Authorization: Bearer <token>` with a user of `role = affiliate`.
 
 | Limiter | Limit | Applied to |
 |---------|-------|-----------|
-| `auth` | 10 req/min per IP | `POST /auth/login`, `POST /auth/register` |
-| `payment` | 5 req/min per IP | `POST /leads`, `POST /invoice/{id}/pay` |
-| `signup` | 10 req/hour per IP | `POST /affiliate/register`, `POST /partner/register` |
-| `quote` | 30 req/min per IP | All `/event-types`, `/us-states`, `/quote`, `/broker-fee` |
-| `api` | 120/min (authed) / 60/min (guest) | General fallback |
+| `auth` | 10 / min per IP | `POST /auth/login`, `POST /auth/register` |
+| `payment` | 5 / min per IP | `POST /leads`, `POST /invoice/{id}/pay` |
+| `signup` | 10 / hour per IP | `POST /affiliate/register`, `POST /partner/register` |
+| `quote` | 30 / min per IP | `/event-types`, `/us-states`, `/quote`, `/broker-fee` |
+| `api` | 120 / min (authenticated), 60 / min (guest) | General fallback |
 
-Exceeded limits return `429 Too Many Requests`.
-
----
-
-## Authentication
-
-This API uses **Laravel Sanctum token authentication**.
-
-1. Call `POST /api/auth/login` to receive a Bearer token
-2. Include it in the `Authorization` header on all protected requests:
-   ```
-   Authorization: Bearer 1|abc123tokenhere
-   ```
-3. Tokens expire after `SANCTUM_TOKEN_EXPIRY` minutes (default: `10080` = 7 days)
-4. Call `POST /api/auth/logout` to revoke the token early
-
-**User roles** (stored as `level` on the `users` table):
-
-| level | Role | Access |
-|-------|------|--------|
-| 1 | Super Admin | Full admin access |
-| 2 | Admin | Full admin access |
-| 6 | Affiliate | Affiliate portal only |
+Exceeding a limit returns `429 Too Many Requests`.
 
 ---
 
@@ -492,53 +417,36 @@ This API uses **Laravel Sanctum token authentication**.
 | Path | Page | Auth |
 |------|------|------|
 | `/` | Home | — |
-| `/login` | Login | — |
-| `/register` | Register | — |
-| `/about` | About (CMS) | — |
-| `/contact` | Contact (CMS) | — |
-| `/terms` | Terms (CMS) | — |
-| `/privacy` | Privacy (CMS) | — |
+| `/login`, `/register` | Login / Register | — |
+| `/about`, `/contact`, `/terms`, `/privacy` | CMS pages | — |
 | `/pages/:slug` | Dynamic CMS page | — |
-| `/blog` | Blog index | — |
-| `/blog/:slug` | Blog post | — |
-| `/onedayevent` | Quote — Step 1: Event type | — |
-| `/quote/details` | Quote — Step 2: Event details | — |
-| `/quote/plans` | Quote — Step 3: Choose plan | — |
-| `/quote/info` | Quote — Step 4: Customer info | — |
-| `/quote/payment` | Quote — Step 5: Payment | — |
+| `/blog`, `/blog/:slug` | Blog index / post | — |
+| `/onedayevent` | Quote step 1 — event type | — |
+| `/quote/details` | Quote step 2 — event details | — |
+| `/quote/plans` | Quote step 3 — choose plan | — |
+| `/quote/info` | Quote step 4 — customer info | — |
+| `/quote/payment` | Quote step 5 — payment | — |
 | `/quote/confirmation/:leadNumber` | Confirmation | — |
-| `/invoice/:encodeId` | View/pay invoice | — |
+| `/invoice/:encodeId` | View / pay invoice | — |
 | `/invoice/:encodeId/success` | Payment success | — |
 | `/affiliate-signup` | Affiliate registration | — |
-| `/affiliate` | Affiliate dashboard | Affiliate token |
-| `/partner-signup` | Partner/venue/planner signup | — |
-| `/admin` | Admin dashboard | Admin token |
-| `/admin/leads` | Leads list | Admin token |
-| `/admin/leads/:id` | Lead detail | Admin token |
-| `/admin/invoices` | Invoices list | Admin token |
-| `/admin/invoices/new` | Create invoice | Admin token |
-| `/admin/invoices/:id` | Invoice detail | Admin token |
-| `/admin/blog` | Blog management | Admin token |
-| `/admin/blog/new` | Create post | Admin token |
-| `/admin/blog/:id/edit` | Edit post | Admin token |
+| `/partner-signup` | Partner / venue / planner signup | — |
+| `/affiliate` | Affiliate dashboard | Affiliate |
+| `/admin` | Admin dashboard | Admin |
+| `/admin/leads`, `/admin/leads/:id` | Leads list / detail | Admin |
+| `/admin/invoices`, `/admin/invoices/new`, `/admin/invoices/:id` | Invoices | Admin |
+| `/admin/blog`, `/admin/blog/new`, `/admin/blog/:id/edit` | Blog management | Admin |
 
 ---
 
 ## Database
 
-The API uses **MySQL 8**. All tables are created via Laravel migrations.
+MySQL 8. All tables are created by Laravel migrations.
 
-**Run migrations:**
 ```bash
-php artisan migrate
+php artisan migrate                  # run migrations
+php artisan migrate:fresh --seed     # reset + reseed (local dev ONLY — destroys data)
 ```
-
-**Reset and re-run (local dev only):**
-```bash
-php artisan migrate:fresh --seed
-```
-
-**Key tables:**
 
 | Table | Description |
 |-------|-------------|
@@ -546,11 +454,9 @@ php artisan migrate:fresh --seed
 | `leads` | Insurance policy purchases |
 | `sales` | Completed sales records |
 | `received_payments` | Payment transactions |
-| `invoices` | Invoices sent to customers |
-| `invoice_line_items` | Line items on invoices |
+| `invoices` / `invoice_line_items` | Customer invoices and their line items |
 | `event_types` | Insurable event categories |
-| `event_rates` | Pricing per event type |
-| `event_rate_states` | State availability per rate |
+| `event_rates` / `event_rate_states` | Pricing per event type and state availability |
 | `us_states` | US state list |
 | `lead_notes` | CRM notes on leads |
 | `lead_emails` | Emails sent for a lead |
@@ -561,18 +467,51 @@ php artisan migrate:fresh --seed
 
 ---
 
+## Queue Workers
+
+Lead confirmations, invoices, and affiliate/partner welcome emails are queued jobs, so a worker must be running.
+
+**Local:**
+```bash
+cd ode-api
+php artisan queue:work --tries=3
+```
+
+**Production** — managed by Supervisor (`deploy/supervisor/ode-worker.conf`):
+```bash
+sudo supervisorctl status ode-worker:*
+sudo supervisorctl restart ode-worker:*    # run after every deploy
+```
+
+---
+
 ## Artisan Commands
 
-### Legacy Data Migration
+```bash
+php artisan optimize:clear            # clear all caches
+php artisan route:list                # show registered routes
+php artisan queue:work --tries=3 --backoff=60
+php artisan queue:retry all           # retry failed jobs
+php artisan schedule:run              # run scheduled tasks manually
 
-Run these once when migrating from the legacy database (`crm_new`). Requires `LEGACY_DB_*` variables set in `.env`.
+# Rebuild caches (after every production deploy)
+php artisan config:cache && php artisan route:cache && php artisan view:cache
+```
+
+---
+
+## Legacy Data Migration
+
+One-time import from the legacy database (`crm_new`). Requires the `LEGACY_DB_*` variables in `.env`.
 
 ```bash
-# Run all migration steps in order
 php artisan migrate:legacy --dry-run   # preview without writing
-php artisan migrate:legacy             # execute
+php artisan migrate:legacy             # run every step in order
+```
 
-# Or run individual steps:
+Or run individual steps:
+
+```bash
 php artisan migrate:us-states
 php artisan migrate:event-types
 php artisan migrate:event-rates
@@ -583,84 +522,34 @@ php artisan migrate:sales-payments
 php artisan migrate:blog-pages
 ```
 
-All commands are **idempotent** — safe to run multiple times. Rows are skipped if they already exist by ID.
+All commands are **idempotent**: rows that already exist (matched by ID) are skipped, so re-running is safe.
 
-> **Note:** Legacy passwords were MD5-hashed (irreversible). Migrated users receive a randomised bcrypt hash and must reset their password via Forgot Password.
-
-### Other Useful Commands
-
-```bash
-# Clear all caches
-php artisan optimize:clear
-
-# Rebuild caches (run after every production deploy)
-php artisan config:cache && php artisan route:cache && php artisan view:cache
-
-# Show all registered routes
-php artisan route:list
-
-# Run the queue worker manually
-php artisan queue:work --tries=3 --backoff=60
-
-# Retry failed jobs
-php artisan queue:retry all
-
-# Run scheduled tasks manually
-php artisan schedule:run
-```
-
----
-
-## Queue Workers
-
-Emails (lead confirmation, invoice, affiliate/partner welcome) are dispatched as queued jobs. The worker must be running to process them.
-
-**Local development:**
-```bash
-cd ode-api
-php artisan queue:work --tries=3
-```
-
-**Production** (managed by Supervisor — see `deploy/supervisor/ode-worker.conf`):
-```bash
-sudo supervisorctl status ode-worker:*
-sudo supervisorctl restart ode-worker:*   # run after every deploy
-```
-
-If `MAIL_MAILER=log` (the local default), email content is written to `storage/logs/laravel.log` instead of being sent.
+> **Passwords:** legacy passwords were MD5 hashes and can't be converted. Migrated users get a random bcrypt hash and must use **Forgot Password** to set a new one.
 
 ---
 
 ## Production Deployment
 
-See `deploy/` for all server configs and scripts.
+All server configs and scripts live in `deploy/`.
 
-**First-time server setup (Ubuntu 22.04/24.04):**
+**First-time setup** (Ubuntu 22.04 / 24.04):
 ```bash
 sudo bash deploy/scripts/first-deploy.sh
 ```
-This installs nginx, PHP 8.3, Node 20, Supervisor, Certbot, clones the repos, obtains SSL certificates, and starts everything.
+Installs nginx, PHP 8.3, Node 20, Supervisor and Certbot, clones the repos, obtains SSL certificates, and starts all services.
 
-**Rolling deploy (every subsequent release):**
+**Subsequent releases:**
 ```bash
-./deploy/scripts/deploy.sh              # deploys API + frontend
+./deploy/scripts/deploy.sh                  # API + frontend
 ./deploy/scripts/deploy.sh --api-only
 ./deploy/scripts/deploy.sh --frontend-only
 ./deploy/scripts/deploy.sh --skip-migrate
 ```
 
-**Verify after deploy:**
+**Verify:**
 ```bash
 curl https://api.onedayevent.com/api/health
 # {"status":"ok","app":"OneDayEvent","env":"production"}
 ```
 
-For full production checklist, see `ode-api/.env.example` (bottom section).
-<<<<<<< HEAD
-#   o d e _ r e b u i l d  
- 
-=======
-#   o d e _ r e b u i l d 
- 
- 
->>>>>>> origin/main
+Full production checklist: bottom section of `ode-api/.env.example`.
